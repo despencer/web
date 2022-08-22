@@ -132,3 +132,5 @@ dmypy.json
 *.html
 *.cookies
 *.headers
+*.request
+*.responce
