@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta, timezone
 import json
 
 class HttpCookie:
@@ -26,13 +27,13 @@ class HttpResponce:
            self.headers[n]=v
 
     def setcookies(self, cjar):
-        for c in cjar.values():
+        for c in cjar:
             ck = HttpCookie()
             ck.name = c.name
             ck.value = c.value
             ck.path = c.path
             ck.domain = c.domain
-            ck.expires = c.expires
+            ck.expires = datetime(1970,1,1,tzinfo=timezone.utc)+timedelta(seconds=c.expires)
             self.cookies.append(ck)
 
 def loadrequest(harfile):
@@ -43,7 +44,7 @@ def loadrequest(harfile):
         req.method = jreq['method']
         req.url = jreq['url']
         for jheader in jreq['headers']:
-            req.headers[jheader['name']] = [jheader['value']]
+            req.headers[jheader['name']] = jheader['value']
     return req
 
 def savehttpheaders(headers):
@@ -55,7 +56,7 @@ def savehttpheaders(headers):
 def savehttpcookies(cookies):
     jcookies = []
     for c in cookies:
-        jcookies.append( { 'name':c.name, 'value':c.value, 'domain':c.domain, 'path':c.path, 'expires':c.expires } )
+        jcookies.append( { 'name':c.name, 'value':c.value, 'domain':c.domain, 'path':c.path, 'expires':c.expires.isoformat() } )
     return jcookies
 
 def savehttprequest(req):
