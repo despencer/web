@@ -33,7 +33,7 @@ class HttpResponce:
             ck.value = c.value
             ck.path = c.path
             ck.domain = c.domain
-            ck.expires = datetime(1970,1,1,tzinfo=timezone.utc)+timedelta(seconds=c.expires)
+            ck.expires = datetime(1970,1,1,tzinfo=timezone.utc)+timedelta(seconds=c.expires) if c.expires != None else None
             self.cookies.append(ck)
 
 def loadrequest(harfile):
@@ -56,7 +56,10 @@ def savehttpheaders(headers):
 def savehttpcookies(cookies):
     jcookies = []
     for c in cookies:
-        jcookies.append( { 'name':c.name, 'value':c.value, 'domain':c.domain, 'path':c.path, 'expires':c.expires.isoformat() } )
+        jc = { 'name':c.name, 'value':c.value, 'domain':c.domain, 'path':c.path }
+        if c.expires != None:
+            jc['expires'] = c.expires.isoformat()
+        jcookies.append( jc )
     return jcookies
 
 def savehttprequest(req):
