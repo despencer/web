@@ -47,11 +47,30 @@ def loadrequest(harfile):
             req.headers[jheader['name']] = jheader['value']
     return req
 
+def loadhttpheaders(jheaders):
+    headers = {}
+    for jheader in jheaders:
+        headers[jheader['name']] = jheader['value']
+    return headers
+
 def savehttpheaders(headers):
     jheaders = []
     for name, value in headers.items():
         jheaders.append( { 'name':name, 'value':value } )
     return jheaders
+
+def loadhttpcookies(jcookies):
+    cookies = []
+    for jc in jcookies:
+        ck = HttpCookie()
+        ck.name = jc['name']
+        ck.value = jc['value']
+        ck.path = jc['path']
+        ck.domain = jc['domain']
+        if 'expires' in jc:
+            ck.expires = datetime.fromisoformat(jc['expires'])
+        cookies.append(ck)
+    return cookies
 
 def savehttpcookies(cookies):
     jcookies = []
@@ -65,6 +84,14 @@ def savehttpcookies(cookies):
 def savehttprequest(req):
     return { 'method':req.method, 'url':req.url, 'headers':savehttpheaders(req.headers) }
 
+def loadhttpresponce(jresp):
+    resp = HttpResponce()
+    resp.status = jresp['status']
+    resp.text = jresp['text']
+    resp.headers = loadhttpheaders(jresp['headers'])
+    resp.cookies = loadhttpcookies(jresp['cookies'])
+    return resp
+
 def savehttpresponce(resp):
     return { 'status':resp.status, 'text':resp.text, 'headers':savehttpheaders(resp.headers), 'cookies':savehttpcookies(resp.cookies) }
 
@@ -72,4 +99,10 @@ def saveresponce(harfile, request, responce):
     jentry = { 'request' : savehttprequest(request), 'responce' : savehttpresponce(responce) }
     with open(harfile, 'w') as jfile:
         json.dump( { 'log':{ 'entries' : [ jentry ] } } , jfile, indent = 4 )
+
+def loadresponce(harfile):
+    with open(harfile) as hfile:
+        jfile = json.load(hfile)
+        jresp = jfile['log']['entries'][0]['responce']
+        return loadhttpresponce(jresp)
 
