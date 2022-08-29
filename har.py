@@ -14,6 +14,7 @@ class HttpRequest:
         self.method = 'GET'
         self.url = ''
         self.headers = {}
+        self.query = {}
 
 class HttpResponce:
     def __init__(self):
@@ -35,17 +36,6 @@ class HttpResponce:
             ck.domain = c.domain
             ck.expires = datetime(1970,1,1,tzinfo=timezone.utc)+timedelta(seconds=c.expires) if c.expires != None else None
             self.cookies.append(ck)
-
-def loadrequest(harfile):
-    with open(harfile) as hfile:
-        jfile = json.load(hfile)
-        jreq = jfile['log']['entries'][0]['request']
-        req = HttpRequest()
-        req.method = jreq['method']
-        req.url = jreq['url']
-        for jheader in jreq['headers']:
-            req.headers[jheader['name']] = jheader['value']
-    return req
 
 def loadhttpheaders(jheaders):
     headers = {}
@@ -81,8 +71,29 @@ def savehttpcookies(cookies):
         jcookies.append( jc )
     return jcookies
 
+def loadhttpquery(jquery):
+    query = {}
+    for jq in jquery:
+        query[jq['name']] = jq['value']
+    return query
+
+def savehttpquery(query):
+    jquery = []
+    for n,v in query.items():
+        jquery.append( { 'name':n, 'value':v } )
+    return jquery
+
+def loadhttprequest(jreq):
+    req = HttpRequest()
+    req.method = jreq['method']
+    req.url = jreq['url']
+    req.headers = loadhttpheaders(jreq['headers'])
+    if 'queryString' in jreq:
+        req.query = loadhttpquery(jreq['queryString'])
+    return req
+
 def savehttprequest(req):
-    return { 'method':req.method, 'url':req.url, 'headers':savehttpheaders(req.headers) }
+    return { 'method':req.method, 'url':req.url, 'headers':savehttpheaders(req.headers), 'queryString':savehttpquery(req.query) }
 
 def loadhttpresponce(jresp):
     resp = HttpResponce()
@@ -106,3 +117,8 @@ def loadresponce(harfile):
         jresp = jfile['log']['entries'][0]['responce']
         return loadhttpresponce(jresp)
 
+def loadrequest(harfile):
+    with open(harfile) as hfile:
+        jfile = json.load(hfile)
+        jreq = jfile['log']['entries'][0]['request']
+        return loadhttprequest(jreq)

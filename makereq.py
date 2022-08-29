@@ -18,5 +18,5 @@ if __name__ == '__main__':
     parser.add_argument('responce', help='Target HAR-file with responce')
     args = parser.parse_args()
     req = har.loadrequest(args.request)
-    responce = requests.request(req.method, req.url, headers=req.headers, allow_redirects=False)
+    responce = requests.request(req.method, req.url, headers=req.headers, params=req.query, allow_redirects=False)
     save(args.responce, req, responce)
