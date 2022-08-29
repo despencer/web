@@ -11,7 +11,14 @@ if __name__ == '__main__':
     parser.add_argument('html', help='Target html-file')
     args = parser.parse_args()
     resp = har.loadresponce(args.responce)
-    document = html5lib.parse(resp.text)
-    ElementTree.indent(document)
-    with open(args.html, 'w') as hfile:
-        hfile.write(ElementTree.tostring(document, encoding='unicode'))
+    processed = False
+    if 'Content-Type' in resp.headers:
+        if resp.headers['Content-Type'].split(';')[0] == 'text/html':
+            document = html5lib.parse(resp.text)
+            ElementTree.indent(document)
+            with open(args.html, 'w') as hfile:
+                hfile.write(ElementTree.tostring(document, encoding='unicode'))
+            processed = True
+    if not processed:
+        with open(args.html, 'w') as hfile:
+            hfile.write(resp.text)
