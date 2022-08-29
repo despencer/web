@@ -14,6 +14,7 @@ class HttpRequest:
         self.method = 'GET'
         self.url = ''
         self.headers = {}
+        self.cookies = []
         self.query = {}
 
 class HttpResponce:
@@ -90,10 +91,12 @@ def loadhttprequest(jreq):
     req.headers = loadhttpheaders(jreq['headers'])
     if 'queryString' in jreq:
         req.query = loadhttpquery(jreq['queryString'])
+    if 'cookies' in jreq:
+        req.cookies = loadhttpcookies(jreq['cookies'])
     return req
 
 def savehttprequest(req):
-    return { 'method':req.method, 'url':req.url, 'headers':savehttpheaders(req.headers), 'queryString':savehttpquery(req.query) }
+    return { 'method':req.method, 'url':req.url, 'headers':savehttpheaders(req.headers), 'queryString':savehttpquery(req.query), 'cookies':savehttpcookies(req.cookies) }
 
 def loadhttpresponce(jresp):
     resp = HttpResponce()
