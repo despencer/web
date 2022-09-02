@@ -1,3 +1,23 @@
+class Task:
+    def __init__(self):
+        self.id = None
+        self.kind = None
+        self.status = None
+
+    @classmethod
+    def get(cls, db, id):
+        res = db.execute("SELECT id, kind, status FROM web_tasks WHERE id = ?", (id, ))
+        if(len(res) == 0):
+            return None
+        return cls.fromvalues(res[0])
+
+    @classmethod
+    def fromvalues(cls, values):
+        task = cls()
+        task.id = values[0]
+        task.kind = values[1]
+        task.status = values[2]
+        return task
 
 class UrlTask:
     def __init__(self):
