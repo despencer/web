@@ -40,4 +40,6 @@ class UrlTask:
         return task
 
 def check(db):
-    db.deploypacket('web',1,"CREATE TABLE web_url_task (id INTEGER NOT NULL, status TEXT NOT NULL, origin INTEGER NULL, kind TEXT NOT NULL, url TEXT NOT NULL, PRIMARY KEY(id))")
+    db.deploypacket('web',1,
+        [ "CREATE TABLE web_url_task (id INTEGER NOT NULL, status TEXT NOT NULL, origin INTEGER NULL, kind TEXT NOT NULL, url TEXT NOT NULL, PRIMARY KEY(id))",
+          "CREATE VIEW web_tasks (id, kind, status) AS SELECT id, 'url', status FROM web_url_task" ] )
