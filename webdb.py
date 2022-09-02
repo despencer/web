@@ -19,8 +19,25 @@ class UrlTask:
         return task
 
     @classmethod
+    def get(cls, db, id):
+        res = db.execute("SELECT id, status, origin, kind, url FROM web_url_task WHERE id = ?", (id, ))
+        if(len(res) == 0):
+            return None
+        return cls.fromvalues(res[0])
+
+    @classmethod
     def values(cls, task):
         return (task.id, task.status, task.origin, task.kind, task.url)
+
+    @classmethod
+    def fromvalues(cls, values):
+        task = cls()
+        task.id = values[0]
+        task.status = values[1]
+        task.origin = values[2]
+        task.kind = values[3]
+        task.url = values[4]
+        return task
 
 def check(db):
     db.deploypacket('web',1,"CREATE TABLE web_url_task (id INTEGER NOT NULL, status TEXT NOT NULL, origin INTEGER NULL, kind TEXT NOT NULL, url TEXT NOT NULL, PRIMARY KEY(id))")
