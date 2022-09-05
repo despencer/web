@@ -13,7 +13,7 @@ if __name__ == '__main__':
     parser.add_argument('url', help='specifies url')
     args = parser.parse_args()
     with Db(args.project) as db:
-        webdb.check(db)
+        webdb.init(db)
         with db.run() as run:
             id = webdb.UrlTask.create(run, args.url).id
             print('Task', id, 'created')

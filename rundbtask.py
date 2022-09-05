@@ -24,6 +24,6 @@ if __name__ == '__main__':
     parser.add_argument('task', help='specifies task')
     args = parser.parse_args()
     with Db(args.project) as db:
-        webdb.check(db)
+        webdb.init(db)
         with db.run() as run:
             runtask(run, webdb.Task.get(run, args.task))
