@@ -1,31 +1,19 @@
+import dbmeta
+
 class Task:
     def __init__(self):
-        self.id = None
-        self.kind = None
-        self.status = None
+        dbmeta.DbMeta.init(Task, self, ['id', 'kind', 'status'])
 
     @classmethod
     def get(cls, db, id):
         res = db.execute("SELECT id, kind, status FROM web_tasks WHERE id = ?", (id, ))
         if(len(res) == 0):
             return None
-        return cls.fromvalues(res[0])
-
-    @classmethod
-    def fromvalues(cls, values):
-        task = cls()
-        task.id = values[0]
-        task.kind = values[1]
-        task.status = values[2]
-        return task
+        return dbmeta.DbMeta.fromvalues(Task, res[0])
 
 class UrlTask:
     def __init__(self):
-        self.id = None
-        self.status = None
-        self.origin = None
-        self.kind = None
-        self.url = None
+        dbmeta.DbMeta.init(UrlTask, self, ['id', 'status', 'origin', 'kind', 'url'])
 
     @classmethod
     def create(cls, db, url):
@@ -35,7 +23,7 @@ class UrlTask:
         task.origin = None
         task.kind = 'document'
         task.url = url
-        db.execute("INSERT INTO web_url_task (id, status, origin, kind, url) VALUES (?, ?, ?, ?, ?)", cls.values(task) )
+        db.execute("INSERT INTO web_url_task (id, status, origin, kind, url) VALUES (?, ?, ?, ?, ?)", dbmeta.DbMeta.values(cls, task) )
         return task
 
     @classmethod
@@ -43,21 +31,7 @@ class UrlTask:
         res = db.execute("SELECT id, status, origin, kind, url FROM web_url_task WHERE id = ?", (id, ))
         if(len(res) == 0):
             return None
-        return cls.fromvalues(res[0])
-
-    @classmethod
-    def values(cls, task):
-        return (task.id, task.status, task.origin, task.kind, task.url)
-
-    @classmethod
-    def fromvalues(cls, values):
-        task = cls()
-        task.id = values[0]
-        task.status = values[1]
-        task.origin = values[2]
-        task.kind = values[3]
-        task.url = values[4]
-        return task
+        return dbmeta.DbMeta.fromvalues(UrlTask, res[0])
 
 def check(db):
     db.deploypacket('web',1,
