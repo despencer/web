@@ -9,8 +9,14 @@ class HtmlPrettyPrinter:
                            xml.dom.Node.CDATA_SECTION_NODE : self.formattext, xml.dom.Node.COMMENT_NODE : self.formattext,
                            xml.dom.Node.DOCUMENT_NODE : self.formatdoc, xml.dom.Node.DOCUMENT_TYPE_NODE : self.formatdoc }
 
+    def formatattribute(self, attr):
+        return '{0}="{1}"'.format(attr.name, attr.value)
+
     def formatnode(self, node):
-        return '<{0}>'.format(node.tagName)
+        ret = '<{0}'.format(node.tagName)
+        for i in range(node.attributes.length):
+            ret += ' ' + self.formatattribute(node.attributes.item(i))
+        return ret+'>'
 
     def formattext(self, text):
         return text.data.strip()
