@@ -1,4 +1,41 @@
 import xml.dom
+import urllib.parse
+
+class HtmlLink:
+    ''' A link from HTML document to other resources. usage: value of Sec-Fetch-Dest, link: original link, url: reconstructed url '''
+    def __init__(self, usage, link, url):
+        self.usage = usage
+        self.link = link
+        self.url = url
+
+class HtmlLinkExtractor:
+    def __init__(self, doc, base):
+        self.doc = doc
+        self.base = base
+        self.links = []
+        self.index = []
+        self.attrs = {'script' : ['src'] }
+        self.usage = {'script' : 'script' }
+
+    def addlink(self, tagname, attrvalue):
+        url = urllib.parse.urljoin(self.base, attrvalue)
+        if url not in self.index:
+            self.links.append( HtmlLink(self.usage[tagname], attrvalue, url) )
+            self.index.append(url)
+
+    def extractnode(self, node):
+        if node.nodeType == xml.dom.Node.ELEMENT_NODE:
+            if node.tagName in self.attrs:
+                for i in range(node.attributes.length):
+                    if node.attributes.item(i).name in self.attrs[node.tagName]:
+                        self.addlink(node.tagName, node.attributes.item(i).value)
+        if node.nodeType in [ xml.dom.Node.DOCUMENT_NODE, xml.dom.Node.DOCUMENT_TYPE_NODE, xml.dom.Node.ELEMENT_NODE ]:
+            for c in node.childNodes:
+                self.extractnode(c)
+
+    def extract(self):
+        self.extractnode(self.doc)
+        return self.links
 
 class HtmlPrettyPrinter:
     def __init__(self, doc, out):
@@ -42,3 +79,6 @@ class HtmlPrettyPrinter:
 
 def prettyprint(doc, st):
     HtmlPrettyPrinter(doc,st).print()
+
+def getlinks(doc, base):
+    return HtmlLinkExtractor(doc, base).extract()
