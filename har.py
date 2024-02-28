@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 import json
+import webhttp
 
 class HttpCookie:
     def __init__(self):
@@ -8,14 +9,6 @@ class HttpCookie:
         self.domain = ''
         self.path = '/'
         self.expires = None
-
-class HttpRequest:
-    def __init__(self):
-        self.method = 'GET'
-        self.url = ''
-        self.headers = {}
-        self.cookies = []
-        self.query = {}
 
 class HttpResponce:
     def __init__(self):
@@ -125,3 +118,11 @@ def loadrequest(harfile):
         jfile = json.load(hfile)
         jreq = jfile['log']['entries'][0]['request']
         return loadhttprequest(jreq)
+
+class Imitator:
+    def __init__(self, jhar):
+        self.jhar = jhar
+
+    def request(self, req):
+        responce = HttpResponce()
+        return responce

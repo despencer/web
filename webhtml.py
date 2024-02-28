@@ -22,8 +22,8 @@ class HtmlLinkExtractor:
         self.base = base
         self.links = []
         self.index = []
-        self.attrs = {'script' : ['src'] }
-        self.usage = {'script' : 'script' }
+        self.attrs = {'script' : ['src'], 'link': ['rel'], 'image': ['src'] }
+        self.usage = {'script':'script', 'link':'document', 'image':'image'}
 
     def addlink(self, tagname, attrvalue):
         url = urllib.parse.urljoin(self.base, attrvalue)
