@@ -2,35 +2,6 @@ from datetime import datetime, timedelta, timezone
 import json
 import webhttp
 
-class HttpCookie:
-    def __init__(self):
-        self.name = ''
-        self.value = ''
-        self.domain = ''
-        self.path = '/'
-        self.expires = None
-
-class HttpResponse:
-    def __init__(self):
-        self.status = 0
-        self.text = ''
-        self.headers = {}
-        self.cookies = []
-
-    def setheaders(self, headers):
-        for n,v in headers.items():
-           self.headers[n]=v
-
-    def setcookies(self, cjar):
-        for c in cjar:
-            ck = HttpCookie()
-            ck.name = c.name
-            ck.value = c.value
-            ck.path = c.path
-            ck.domain = c.domain
-            ck.expires = datetime(1970,1,1,tzinfo=timezone.utc)+timedelta(seconds=c.expires) if c.expires != None else None
-            self.cookies.append(ck)
-
 def loadhttpheaders(jheaders):
     headers = {}
     for jheader in jheaders:
@@ -92,7 +63,7 @@ def savehttprequest(req):
     return { 'method':req.method, 'url':req.url, 'headers':savehttpheaders(req.headers), 'queryString':savehttpquery(req.query), 'cookies':savehttpcookies(req.cookies) }
 
 def loadhttpresponse(jresp):
-    resp = HttpResponse()
+    resp = webhttp.HttpResponse()
     resp.status = jresp['status']
     resp.text = jresp['content']['text']
     resp.headers = loadhttpheaders(jresp['headers'])
