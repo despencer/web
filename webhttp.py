@@ -16,9 +16,15 @@ class HttpCookie:
         self.expires = None
 
 class HttpResponse:
+    RESPONSE_OK = 200
+    RESPONSE_MOVED = 301
+    RESPONSE_REDIRECT = 302
+    RESPONSE_NOTFOUND = 404
+
     def __init__(self):
+        self.request = None
         self.status = 0
-        self.text = ''
+        self.content = ''
         self.headers = {}
         self.cookies = []
 
@@ -36,11 +42,29 @@ class HttpResponse:
             ck.expires = datetime(1970,1,1,tzinfo=timezone.utc)+timedelta(seconds=c.expires) if c.expires != None else None
             self.cookies.append(ck)
 
+class Cache:
+    def __init__(self):
+        self.pages = {}
+
+    def append(self, response):
+        self.pages[response.request.url] = response
+
+    def get(self, url):
+        if url in self.pages:
+            return self.pages[url]
+        return None
+
+    def clear(self):
+        self.pages.clear()
+
 class Browser:
     def __init__(self, gateway):
         self.gateway = gateway
+        self.cache = Cache()
 
     def loadpage(self, url):
+        self.cache.clear()
         req = HttpRequest()
         req.url = url
-        self.gateway.request(req)
+        resp = self.gateway.request(req)
+        self.cache.append(resp)

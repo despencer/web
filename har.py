@@ -65,7 +65,7 @@ def savehttprequest(req):
 def loadhttpresponse(jresp):
     resp = webhttp.HttpResponse()
     resp.status = jresp['status']
-    resp.text = jresp['content']['text']
+    resp.content = jresp['content']['text']
     resp.headers = loadhttpheaders(jresp['headers'])
 #    resp.cookies = loadhttpcookies(jresp['cookies'])
     return resp
@@ -97,13 +97,17 @@ class Imitator:
         self.processed = []
 
     def request(self, req):
+        response = None
         for jentry in self.jhar['log']['entries']:
             if jentry['request']['url'] == req.url:
                 self.processed.append(req.url)
-                return loadhttpresponse(jentry['response'])
-        self.output.write('Url "{0}" is not found\n'.format(req.url))
-        responce = HttpResponce()
-        responce.status = 200
+                response = loadhttpresponse(jentry['response'])
+        if response == None:
+            self.output.write('Url "{0}" is not found\n'.format(req.url))
+            response = HttpResponse()
+            response.status = webhttp.HttpResponse.RESPONSE_NOTFOUND
+        response.request = req
+        return response
 
     def check(self):
         for jentry in self.jhar['log']['entries']:
