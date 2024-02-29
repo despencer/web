@@ -10,7 +10,7 @@ class HttpCookie:
         self.path = '/'
         self.expires = None
 
-class HttpResponce:
+class HttpResponse:
     def __init__(self):
         self.status = 0
         self.text = ''
@@ -91,26 +91,26 @@ def loadhttprequest(jreq):
 def savehttprequest(req):
     return { 'method':req.method, 'url':req.url, 'headers':savehttpheaders(req.headers), 'queryString':savehttpquery(req.query), 'cookies':savehttpcookies(req.cookies) }
 
-def loadhttpresponce(jresp):
-    resp = HttpResponce()
+def loadhttpresponse(jresp):
+    resp = HttpResponse()
     resp.status = jresp['status']
-    resp.text = jresp['text']
+    resp.text = jresp['content']['text']
     resp.headers = loadhttpheaders(jresp['headers'])
-    resp.cookies = loadhttpcookies(jresp['cookies'])
+#    resp.cookies = loadhttpcookies(jresp['cookies'])
     return resp
 
 def savehttpresponce(resp):
     return { 'status':resp.status, 'text':resp.text, 'headers':savehttpheaders(resp.headers), 'cookies':savehttpcookies(resp.cookies) }
 
 def saveresponce(harfile, request, responce):
-    jentry = { 'request' : savehttprequest(request), 'responce' : savehttpresponce(responce) }
+    jentry = { 'request' : savehttprequest(request), 'response' : savehttpresponce(responce) }
     with open(harfile, 'w') as jfile:
         json.dump( { 'log':{ 'entries' : [ jentry ] } } , jfile, indent = 4 )
 
 def loadresponce(harfile):
     with open(harfile) as hfile:
         jfile = json.load(hfile)
-        jresp = jfile['log']['entries'][0]['responce']
+        jresp = jfile['log']['entries'][0]['response']
         return loadhttpresponce(jresp)
 
 def loadrequest(harfile):
@@ -120,9 +120,22 @@ def loadrequest(harfile):
         return loadhttprequest(jreq)
 
 class Imitator:
-    def __init__(self, jhar):
+    def __init__(self, jhar, output):
         self.jhar = jhar
+        self.output = output
+        self.processed = []
 
     def request(self, req):
+        for jentry in self.jhar['log']['entries']:
+            if jentry['request']['url'] == req.url:
+                self.processed.append(req.url)
+                return loadhttpresponse(jentry['response'])
+        self.output.write('Url "{0}" is not found\n'.format(req.url))
         responce = HttpResponce()
-        return responce
+        responce.status = 200
+
+    def check(self):
+        for jentry in self.jhar['log']['entries']:
+            url = jentry['request']['url']
+            if url not in self.processed:
+                self.output.write('Url "{0}" has not been requested\n'.format(url))

@@ -2,15 +2,17 @@
 
 import argparse
 import json
+import sys
 import webhttp
 import har
 
 def main(args):
     with open(args.har) as hfile:
         jfile = json.load(hfile)
-        imitator = har.Imitator(jfile)
+        imitator = har.Imitator(jfile, sys.stdout)
         browser = webhttp.Browser(imitator)
         browser.loadpage(jfile['log']['entries'][0]['request']['url'])
+        imitator.check()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Imitates a browser via har file')
