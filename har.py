@@ -104,7 +104,7 @@ class Imitator:
                 response = loadhttpresponse(jentry['response'])
         if response == None:
             self.output.write('Url "{0}" is not found\n'.format(req.url))
-            response = HttpResponse()
+            response = webhttp.HttpResponse()
             response.status = webhttp.HttpResponse.RESPONSE_NOTFOUND
         response.request = req
         return response

@@ -23,8 +23,8 @@ class HtmlLinkExtractor:
         self.base = base
         self.links = []
         self.index = []
-        self.attrs = {'script' : ['src'], 'link': ['href'], 'image': ['src'] }
-        self.usage = {'script':'script', 'link':'$rel', 'link.rel.icon':'image', 'link.rel.stylesheet':'css', 'image':'image'}
+        self.attrs = {'script' : ['src'], 'link': ['href'], 'img': ['src'] }
+        self.usage = {'script':'script', 'link':'$rel', 'link.rel.icon':'image', 'link.rel.stylesheet':'css', 'img':'image'}
 
     def addlink(self, tagname, attrvalue, node):
         url = urllib.parse.urljoin(self.base, attrvalue)
@@ -48,7 +48,7 @@ class HtmlPrettyPrinter:
         self.out = out
         self.indent = 4
         self.formatter = { xml.dom.Node.ELEMENT_NODE : self.formatnode, xml.dom.Node.TEXT_NODE : self.formattext,
-                           xml.dom.Node.CDATA_SECTION_NODE : self.formattext, xml.dom.Node.COMMENT_NODE : self.formattext,
+                           xml.dom.Node.CDATA_SECTION_NODE : self.formattext, xml.dom.Node.COMMENT_NODE : self.formatcomment,
                            xml.dom.Node.DOCUMENT_NODE : self.formatdoc, xml.dom.Node.DOCUMENT_TYPE_NODE : self.formatdoc }
 
     def formatattribute(self, attr):
@@ -59,6 +59,9 @@ class HtmlPrettyPrinter:
         for i in range(node.attributes.length):
             ret += ' ' + self.formatattribute(node.attributes.item(i))
         return ret+'>'
+
+    def formatcomment(self, text):
+        return '<!-- {0} -->'.format(text.data.strip())
 
     def formattext(self, text):
         return text.data.strip()
