@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+import webhtml
 
 class HttpRequest:
     def __init__(self):
@@ -62,9 +63,23 @@ class Browser:
         self.gateway = gateway
         self.cache = Cache()
 
-    def loadpage(self, url):
-        self.cache.clear()
+    def makerequest(self, url):
         req = HttpRequest()
         req.url = url
         resp = self.gateway.request(req)
         self.cache.append(resp)
+        while resp.status in (HttpResponse.RESPONSE_MOVED, HttpResponse.RESPONSE_REDIRECT):
+            req = HttpRequest()
+            req.url = resp.headers['location']
+            resp = self.gateway.request(req)
+            self.cache.append(resp)
+        return resp
+
+    def loadpage(self, url):
+        self.cache.clear()
+        resp = self.makerequest(url)
+        if resp.status == HttpResponse.RESPONSE_OK:
+            dom = webhtml.parse(resp.content)
+            for l in webhtml.getlinks(dom, url):
+                if l.usage in ('script', 'image', 'css'):
+                    self.makerequest(l.url)

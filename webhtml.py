@@ -1,3 +1,4 @@
+import html5lib
 import xml.dom
 import urllib.parse
 
@@ -22,19 +23,23 @@ class HtmlLinkExtractor:
         self.base = base
         self.links = []
         self.index = []
-        self.attrs = {'script' : ['src'], 'link': ['rel'], 'image': ['src'] }
-        self.usage = {'script':'script', 'link':'document', 'image':'image'}
+        self.attrs = {'script' : ['src'], 'link': ['href'], 'image': ['src'] }
+        self.usage = {'script':'script', 'link':'$rel', 'link.rel.icon':'image', 'link.rel.stylesheet':'css', 'image':'image'}
 
-    def addlink(self, tagname, attrvalue):
+    def addlink(self, tagname, attrvalue, node):
         url = urllib.parse.urljoin(self.base, attrvalue)
         if url not in self.index:
-            self.links.append( HtmlLink(self.usage[tagname], attrvalue, url) )
+            usage = self.usage[tagname]
+            if usage[0] == '$':
+                attrname = usage[1:]
+                usage = self.usage[ '{0}.{1}.{2}'.format(tagname, attrname, node.attributes[attrname].value) ]
+            self.links.append( HtmlLink(usage, attrvalue, url) )
             self.index.append(url)
 
     def extract(self):
         for node in traverse(self.doc):
             if node.nodeType == xml.dom.Node.ATTRIBUTE_NODE and node.parentNode.nodeName in self.attrs and node.nodeName in self.attrs[node.parentNode.nodeName]:
-                self.addlink(node.parentNode.nodeName, node.nodeValue)
+                self.addlink(node.parentNode.nodeName, node.nodeValue, node.parentNode)
         return self.links
 
 class HtmlPrettyPrinter:
@@ -90,3 +95,6 @@ def traverse(node):
 
 def getlinks(doc, base):
     return HtmlLinkExtractor(doc, base).extract()
+
+def parse(content):
+    return html5lib.parse(content, treebuilder='dom')
