@@ -1,6 +1,10 @@
 from datetime import datetime, timedelta, timezone
 import json
+import xml.dom
+import urllib
 import webhttp
+import webhtml
+import webscript
 
 def loadhttpheaders(jheaders):
     headers = {}
@@ -102,6 +106,7 @@ class Imitator:
             if jentry['request']['url'] == req.url:
                 self.processed.append(req.url)
                 response = loadhttpresponse(jentry['response'])
+                break
         if response == None:
             self.output.write('Url "{0}" is not found\n'.format(req.url))
             response = webhttp.HttpResponse()
@@ -114,3 +119,26 @@ class Imitator:
             url = jentry['request']['url']
             if url not in self.processed:
                 self.output.write('Url "{0}" has not been requested\n'.format(url))
+
+def getscripts(doc, jhar, baseurl):
+    scripts = []
+    for node in webhtml.traverse(doc):
+        if node.nodeType == xml.dom.Node.ELEMENT_NODE and node.nodeName == "script":
+            path = webhtml.getnodepath(node)
+            if 'src' in node.attributes:
+                url = urllib.parse.urljoin(baseurl, node.attributes['src'].value)
+                script = None
+                for jentry in jhar:
+                   if jentry['request']['url'] == url:
+                        script = webscript.HtmlScript(path, jentry['response']['content']['text'], url=url)
+                        break
+                if script == None:
+                    print('url {0} not found'.format(url))
+                else:
+                    scripts.append(script)
+            else:
+                source = ''
+                for cn in node.childNodes:
+                    source += cn.data
+                scripts.append( webscript.HtmlScript(path, source) )
+    return scripts

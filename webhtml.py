@@ -96,6 +96,14 @@ def traverse(node):
     for c in node.childNodes:
         yield from traverse(c)
 
+def getnodepath(node):
+    path = []
+    while node.parentNode != None:
+        path.append(node)
+        node = node.parentNode
+    path.reverse()
+    return path
+
 def getlinks(doc, base):
     return HtmlLinkExtractor(doc, base).extract()
 
