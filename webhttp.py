@@ -1,5 +1,12 @@
 from datetime import datetime, timedelta, timezone
+import xml.dom
+import urllib
 import webhtml
+import webscript
+import sys
+import os
+sys.path.insert(1, os.path.expanduser('~/dev/web/smjs'))
+import spidermonkey
 
 class HttpRequest:
     def __init__(self):
@@ -75,11 +82,24 @@ class Browser:
             self.cache.append(resp)
         return resp
 
+    def getscripts(self, dom):
+        scripts = []
+        for node in webhtml.traverse(dom):
+            if node.nodeType == xml.dom.Node.ELEMENT_NODE and node.nodeName == "script":
+                scripts.append(node)
+        return scripts
+
+    def runjs(self, dom, url):
+        with spidermonkey.connect() as context:
+            engine = webscript.JavaScriptEngine(context, self, dom, url)
+            engine.run()
+
     def loadpage(self, url):
         self.cache.clear()
         resp = self.makerequest(url)
         if resp.status == HttpResponse.RESPONSE_OK:
             dom = webhtml.parse(resp.content)
             for l in webhtml.getlinks(dom, url):
-                if l.usage in ('script', 'image', 'css'):
+                if l.usage in ('image', 'css'):
                     self.makerequest(l.url)
+            self.runjs(dom, url)

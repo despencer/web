@@ -1,0 +1,1 @@
+An interface from Python to the Mozilla SpiderMonkey engine.
