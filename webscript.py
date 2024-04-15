@@ -2,16 +2,13 @@ import xml.dom
 import urllib
 import webhtml
 import webhttp
+import webdom
 
 class HtmlScript:
     def __init__(self, path, source, url=None):
         self.path = path
         self.source = source
         self.url = url
-
-class NodeProxy:
-    def __init__(self, node):
-        self.node = node
 
 class JavaScriptEngine:
     def __init__(self, context, browser, dom, baseurl):
@@ -29,7 +26,7 @@ class JavaScriptEngine:
             self.execute(code)
 
     def init(self):
-        self.context.add( {'document':NodeProxy(self.dom)} )
+        webdom.setupcontext(self.context, self.dom)
 
     def getscripts(self):
         scripts = []
@@ -53,4 +50,10 @@ class JavaScriptEngine:
         return code
 
     def execute(self, code):
-        self.context.execute(code)
+        try:
+            self.context.execute(code)
+        except Exception as e:
+            print(e)
+            print('/* ------- script -------- */')
+            print(code)
+            print('/* ======================= */')
