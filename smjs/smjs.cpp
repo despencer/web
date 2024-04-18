@@ -41,7 +41,7 @@ void SMContext::shutdown(void)
  JS_ShutDown();
 }
 
-static JSClass SMGlobalClass = { "global", JSCLASS_GLOBAL_FLAGS, &JS::DefaultGlobalClassOps };
+static JSClass SMGlobalClass = { "global", JSCLASS_GLOBAL_FLAGS_WITH_SLOTS(1), &JS::DefaultGlobalClassOps };
 
 SMContext* SMContext::open(void)
 {
@@ -158,9 +158,9 @@ bool SMContext::addfunction(const char* name, jsfunc_t func, unsigned int numarg
  return true;
 }
 
-bool SMContext::addproxyfunction(const char* name, jsfuncproxy_t func, void* proxydata)
+bool SMContext::addproxyfunction(const char* name, JS::RootedObject* jsobj, jsfuncproxy_t func, void* proxydata)
 {
- JSFunction* jsfunc = JS_DefineFunction(this->context, *this->root, name, proxyfunc, 0, 0);
+ JSFunction* jsfunc = JS_DefineFunction(this->context, *(jsobj), name, proxyfunc, 0, 0);
  SMProxyFunction* pmf = new SMProxyFunction(name, func, proxydata);
  proxyfuncs.insert(std::make_pair(jsfunc, pmf));
  return true;

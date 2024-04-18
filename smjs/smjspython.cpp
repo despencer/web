@@ -1,20 +1,28 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include <iostream>
+#include <format>
 #include "smjspython.h"
 #include <js/CompilationAndEvaluation.h>
 #include <js/Conversions.h>
 #include <js/Object.h>
 
 static bool smjsinit = false;
+
+// attribute of Python context with reference to a SMPythonConext
 static const char* smattrname = "sm";
+
+// attribute of Python context with reference to a global object
+static const char* globalattrname = "globj";
+
+// function name for object attribute synchronization
+static const char* funcobjsync = "objectsync";
 
 // name of Python object's attribute for keeping reference to a corresponding JavaScript object
 static const char* smobjattrname = "_smjs_";
 
 static PyObject* smerrorclass = NULL;
 static JSClass smjsClass = { "Object", JSCLASS_HAS_RESERVED_SLOTS(1), nullptr };
-enum smjsClassSlots { SlotPtr };
 
 static PyObject* smjs_open_context(PyObject* module, PyObject* args)
 {
@@ -63,6 +71,10 @@ static PyObject* smjs_init_context(PyObject* module, PyObject* args)
  SMPythonContext* pytcx = getcontext(context);
  if(pytcx == NULL) return NULL;
 
+ PyObject* pyglobal = PyObject_GetAttrString(context, globalattrname);
+ smjs_bindobjects(context, pytcx->sm->root, pyglobal);
+ Py_XDECREF(pyglobal);
+
  Py_RETURN_NONE;
 }
 
@@ -100,6 +112,22 @@ static PyObject* smjs_execute(PyObject* module, PyObject* args)
  Py_RETURN_NONE;
 }
 
+void smjs_bindobjects(PyObject* context, JS::RootedObject* jsobj, PyObject* pyobject)
+{
+ // setting cross-reference from JS to Python
+ JS::SetReservedSlot(*jsobj, SlotPtr, JS::PrivateValue(pyobject));
+
+ // setting cross-reference from Python to JS
+ PyObject* capsule = PyCapsule_New(jsobj, NULL, NULL);
+ PyObject_SetAttrString(pyobject, smobjattrname, capsule);
+
+ // synchronize JS object with python attributes
+ PyObject* function = PyObject_GetAttrString(context, funcobjsync);
+ PyObject* result = PyObject_CallFunctionObjArgs(function, pyobject, NULL);
+ Py_XDECREF(result);
+ Py_XDECREF(function);
+}
+
 /* This is a function for calling python global functions that are mapped via smjs_add_globalfunction
  * It is called by SpiderMonkey proxy function with python name and JS args provided
  *
@@ -117,6 +145,10 @@ static bool proxycall(std::string& name, void* proxydata, JSContext* ctx, JS::Ca
  if(convertors == NULL)
      return false;
 
+ // object (self)
+ PyObject* pyobject = getpyobjfromjs(ctx, args);
+ if(pyobject == NULL) return false;
+
  // both are new references
  PyObject* function = PyObject_GetAttrString(context, "funccall");
  PyObject* pname =  PyUnicode_FromString(name.c_str());
@@ -124,7 +156,15 @@ static bool proxycall(std::string& name, void* proxydata, JSContext* ctx, JS::Ca
  PyObject* pargs = smjs_convert(ctx, args, convertors);
  if(pargs != NULL)
    {
-   PyObject* result = PyObject_CallFunctionObjArgs(function, pname, pargs, NULL);
+   PyObject* result = PyObject_CallFunctionObjArgs(function, pyobject, pname, pargs, NULL);
+   if(result == NULL)
+       {
+       Py_XDECREF(pargs); Py_XDECREF(pname); Py_XDECREF(function);
+       delete[] convertors;
+       std::string error = std::format("Failed to call function {}", name);
+       JS_ReportErrorUTF8(ctx, error.c_str());
+       return NULL;
+       }
    smjs_convertresult(ctx, args, result);
    Py_XDECREF(result);
    }
@@ -145,7 +185,7 @@ static PyObject* smjs_add_globalfunction(PyObject* module, PyObject* args)
  SMPythonContext* pytcx = getcontext(context);
  if(pytcx == NULL) return NULL;
 
- pytcx->sm->addproxyfunction(name, proxycall, context);
+ pytcx->sm->addproxyfunction(name, pytcx->sm->root, proxycall, context);
 
  Py_RETURN_NONE;
 }
@@ -197,10 +237,10 @@ bool proxygetter(std::string& name, void* proxydata, JSContext* ctx, JS::CallArg
  if(pyobject == NULL) return false;
 
  PyObject* result = PyObject_GetAttrString(pyobject, name.c_str());
- smjs_convertresult(ctx, args, result);
+ bool ret = smjs_convertresult(ctx, args, result);
  Py_XDECREF(result);
 
- return true;
+ return ret;
 }
 
 // callback from JS engine for setting an attribute
@@ -239,6 +279,28 @@ static PyObject* smjs_add_objectproperty(PyObject* module, PyObject* args)
  Py_RETURN_NONE;
 }
 
+static PyObject* smjs_add_objectfunction(PyObject* module, PyObject* args)
+{
+ PyObject* context = NULL;
+ char* name = NULL;
+ PyObject* pyobject = NULL;
+ if(!PyArg_ParseTuple(args, "OOs", &context, &pyobject, &name))
+    return NULL;
+
+ SMPythonContext* pytcx = getcontext(context);
+ if(pytcx == NULL) return NULL;
+
+// retrieving reference to the corresponding JS object
+ PyObject* capsule = PyObject_GetAttrString(pyobject, smobjattrname);
+ if(capsule == NULL) return NULL;
+ JS::RootedObject* jsobj = (JS::RootedObject*)PyCapsule_GetPointer(capsule, NULL);
+
+ pytcx->sm->addproxyfunction(name, jsobj, proxycall, context);
+
+ Py_RETURN_NONE;
+}
+
+
 static PyObject* smjs_shutdown(PyObject* module, PyObject* args)
 {
  Py_XDECREF(smerrorclass);
@@ -258,6 +320,7 @@ static PyMethodDef smjs_methods[] =
  {"add_globalfunction", smjs_add_globalfunction, METH_VARARGS, "Adds a global function to the JavaScript"},
  {"add_globalobject", smjs_add_globalobject, METH_VARARGS, "Adds a global object to the JavaScript"},
  {"add_objectproperty", smjs_add_objectproperty, METH_VARARGS, "Adds a property to an object"},
+ {"add_objectfunction", smjs_add_objectfunction, METH_VARARGS, "Adds a function to an object"},
  {"shutdown", smjs_shutdown, METH_VARARGS, "Shutdowns the SpiderMoney JavaScript engine"},
  {NULL, NULL, 0, NULL}
 };
