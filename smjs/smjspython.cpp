@@ -19,10 +19,9 @@ static const char* globalattrname = "globj";
 static const char* funcobjsync = "objectsync";
 
 // name of Python object's attribute for keeping reference to a corresponding JavaScript object
-static const char* smobjattrname = "_smjs_";
+const char* smobjattrname = "_smjs_";
 
 static PyObject* smerrorclass = NULL;
-static JSClass smjsClass = { "Object", JSCLASS_HAS_RESERVED_SLOTS(1), nullptr };
 
 static PyObject* smjs_open_context(PyObject* module, PyObject* args)
 {
@@ -165,7 +164,7 @@ static bool proxycall(std::string& name, void* proxydata, JSContext* ctx, JS::Ca
        JS_ReportErrorUTF8(ctx, error.c_str());
        return NULL;
        }
-   smjs_convertresult(ctx, args, result);
+   smjs_convertresult(ctx, context, args, result);
    Py_XDECREF(result);
    }
 
@@ -173,53 +172,6 @@ static bool proxycall(std::string& name, void* proxydata, JSContext* ctx, JS::Ca
  Py_XDECREF(pname); Py_XDECREF(function);
  delete[] convertors;
  return true;
-}
-
-static PyObject* smjs_add_globalfunction(PyObject* module, PyObject* args)
-{
- PyObject* context = NULL;
- char* name = NULL;
- if(!PyArg_ParseTuple(args, "Os", &context, &name))
-    return NULL;
-
- SMPythonContext* pytcx = getcontext(context);
- if(pytcx == NULL) return NULL;
-
- pytcx->sm->addproxyfunction(name, pytcx->sm->root, proxycall, context);
-
- Py_RETURN_NONE;
-}
-
-// This function creates a mirrored JavaScript object and connects both (Python and JavaScript object)
-// with cross-references. This function does not create any attribute
-static PyObject* smjs_add_globalobject(PyObject* module, PyObject* args)
-{
- PyObject* context = NULL;
- char* name = NULL;
- PyObject* pyobject = NULL;
- if(!PyArg_ParseTuple(args, "OsO", &context, &name, &pyobject))
-    return NULL;
-
- SMPythonContext* pytcx = getcontext(context);
- if(pytcx == NULL) return NULL;
-
-// new JS object
- JS::RootedObject* jsobj = new JS::RootedObject(pytcx->sm->context, JS_NewObject(pytcx->sm->context, &smjsClass));
- if(!(*jsobj)) return NULL;
-
-// setting cross-reference from JS to Python
- JS::SetReservedSlot(*jsobj, SlotPtr, JS::PrivateValue(pyobject));
-
-// setting cross-reference from Python to JS
- PyObject* capsule = PyCapsule_New(jsobj, NULL, NULL);
- PyObject_SetAttrString(pyobject, smobjattrname, capsule);
-
-// Adding new JS object to the global JS object
- JS::RootedValue value(pytcx->sm->context); value.setObject(*(*jsobj));
- if(!JS_SetProperty(pytcx->sm->context, *(pytcx->sm->root), name, value))
-    return NULL;
-
- Py_RETURN_NONE;
 }
 
 PyObject* getpyobjfromjs(JSContext* ctx, JS::CallArgs& args)
@@ -233,11 +185,13 @@ PyObject* getpyobjfromjs(JSContext* ctx, JS::CallArgs& args)
 // callback from JS engine for getting an attribute
 bool proxygetter(std::string& name, void* proxydata, JSContext* ctx, JS::CallArgs& args)
 {
+ PyObject* context = (PyObject*)proxydata;
+
  PyObject* pyobject = getpyobjfromjs(ctx, args);
  if(pyobject == NULL) return false;
 
  PyObject* result = PyObject_GetAttrString(pyobject, name.c_str());
- bool ret = smjs_convertresult(ctx, args, result);
+ bool ret = smjs_convertresult(ctx, context, args, result);
  Py_XDECREF(result);
 
  return ret;
@@ -317,8 +271,8 @@ static PyMethodDef smjs_methods[] =
  {"init_context", smjs_init_context, METH_VARARGS, "Initializes a SpiderMonkey JavaScript context"},
  {"close_context", smjs_close_context, METH_VARARGS, "Closes a SpiderMonkey JavaScript context"},
  {"execute", smjs_execute, METH_VARARGS, "Execute a JavaScript"},
- {"add_globalfunction", smjs_add_globalfunction, METH_VARARGS, "Adds a global function to the JavaScript"},
- {"add_globalobject", smjs_add_globalobject, METH_VARARGS, "Adds a global object to the JavaScript"},
+// {"add_globalfunction", smjs_add_globalfunction, METH_VARARGS, "Adds a global function to the JavaScript"},
+// {"add_globalobject", smjs_add_globalobject, METH_VARARGS, "Adds a global object to the JavaScript"},
  {"add_objectproperty", smjs_add_objectproperty, METH_VARARGS, "Adds a property to an object"},
  {"add_objectfunction", smjs_add_objectfunction, METH_VARARGS, "Adds a function to an object"},
  {"shutdown", smjs_shutdown, METH_VARARGS, "Shutdowns the SpiderMoney JavaScript engine"},

@@ -10,7 +10,7 @@ typedef PyObject* (*jsconv_t)(JSContext* ctx, const JS::MutableHandleValue& valu
 jsconv_t* smjs_getconvertors(JSContext* ctx, JS::CallArgs& args);
 PyObject* smjs_convert(JSContext* ctx, JS::CallArgs& args, jsconv_t* converters);
 PyObject* smjs_convertsingle(JSContext* ctx, const JS::MutableHandleValue& value);
-bool smjs_convertresult(JSContext* ctx, JS::CallArgs& args, PyObject* pobj);
+bool smjs_convertresult(JSContext* ctx, PyObject* context, JS::CallArgs& args, PyObject* pobj);
 void smjs_bindobjects(PyObject* context, JS::RootedObject* jsobj, PyObject* pyobject);
 PyObject* getpyobjfromjs(JSContext* ctx, JS::CallArgs& args);
 

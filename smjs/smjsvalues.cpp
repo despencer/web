@@ -4,6 +4,9 @@
 #include <format>
 #include "smjspython.h"
 
+extern const char* smobjattrname;
+static JSClass smjsClass = { "Object", JSCLASS_HAS_RESERVED_SLOTS(1), nullptr };
+
 PyObject* smjs_conv_string(JSContext* ctx, const JS::MutableHandleValue& value)
 {
  JS::RootedString strvalue(ctx, value.toString());
@@ -69,7 +72,7 @@ PyObject* smjs_convertsingle(JSContext* ctx, const JS::MutableHandleValue& value
  return conv(ctx, value);
 }
 
-bool smjs_convertresult(JSContext* ctx, JS::CallArgs& args, PyObject* pobj)
+bool smjs_convertresult(JSContext* ctx, PyObject* context, JS::CallArgs& args, PyObject* pobj)
 {
  const char* tname = Py_TYPE(pobj)->tp_name;
 
@@ -82,6 +85,30 @@ bool smjs_convertresult(JSContext* ctx, JS::CallArgs& args, PyObject* pobj)
     JS::ConstUTF8CharsZ buf(pstr, size);
     JS::RootedString str(ctx, JS_NewStringCopyUTF8Z(ctx, buf));
     args.rval().setString(str);
+    }
+ else if(std::isupper(tname[0]))
+    {
+    PyObject* capsule = PyObject_GetAttrString(pobj, smobjattrname);
+    if(capsule == NULL)
+        {
+           // create and bind JS Object
+        JS::RootedObject* jsobj = new JS::RootedObject(ctx, JS_NewObject(ctx, &smjsClass));
+        if(!(*jsobj)) return NULL;
+        smjs_bindobjects(context, jsobj, pobj);
+        args.rval().setObject(*(*jsobj));
+        }
+    else
+        {
+           // JS object already exists
+        JS::RootedObject* jsobj = (JS::RootedObject*)PyCapsule_GetPointer(capsule, NULL);
+        if(jsobj == NULL)
+            {
+            std::string error = std::format("Can't resolve JS object for Python object of type {}", tname);
+            JS_ReportErrorUTF8(ctx, error.c_str());
+            return false;
+            }
+        args.rval().setObject(*(*jsobj));
+        }
     }
  else
     {

@@ -2,7 +2,6 @@ import smjs
 
 class Context:
     def __init__(self, globj):
-        self.jsfuncs = {}
         self.globj = globj
 
     def open(self):
@@ -14,17 +13,6 @@ class Context:
 
     def execute(self, jscode):
        smjs.execute(self, jscode)
-
-    def add(self, globs):
-       for name, obj in globs.items():
-            if callable(obj):
-                self.jsfuncs[name] = obj
-                smjs.add_globalfunction(self, name)
-            else:
-                smjs.add_globalobject(self, name, obj)
-                for name in vars(obj):
-                    if name[0] != '_':
-                        smjs.add_objectproperty(self, obj, name)
 
     def funccall(self, obj, funcname, args):
        return obj._smjsfuncs_[funcname](*args)
