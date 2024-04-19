@@ -1,4 +1,5 @@
 #include <iostream>
+#include <format>
 #include "smjs.h"
 #include <js/SourceText.h>
 #include <js/CompilationAndEvaluation.h>
@@ -105,21 +106,25 @@ std::string SMContext::geterror(void)
  if(!JS_IsExceptionPending(this->context))
     return std::string("No error");
 
- JS::RootedValue* excpt = new JS::RootedValue(this->context);
- JS_GetPendingException(this->context, excpt);
- JS_ClearPendingException(this->context);
+ JS::RootedValue excpt(context);
+ JS_GetPendingException(context, &excpt);
+ JS_ClearPendingException(context);
 
  std::string ret;
 
  {
-  JS::RootedString message(this->context, JS::ToString(this->context, *excpt));
+  JS::RootedString message(this->context, JS::ToString(this->context, excpt ));
   if(!message)
       ret = "Unable to convert the exception to a string";
   else
-      ret = JS_EncodeStringToUTF8(this->context, message).get();
+      {
+      JS::RootedObject excobj(context, &excpt.toObject());
+      JSErrorReport* errep = JS_ErrorFromException(context, excobj);
+
+      ret = std::format("'{}' at line {}", JS_EncodeStringToUTF8(this->context, message).get(), errep->lineno);
+      }
  }
 
- delete excpt;
  return ret;
 }
 
