@@ -42,7 +42,7 @@ void SMContext::shutdown(void)
  JS_ShutDown();
 }
 
-static JSClass SMGlobalClass = { "global", JSCLASS_GLOBAL_FLAGS_WITH_SLOTS(1), &JS::DefaultGlobalClassOps };
+JSClass SMGlobalClass = { "global", JSCLASS_GLOBAL_FLAGS_WITH_SLOTS(1), &JS::DefaultGlobalClassOps };
 
 SMContext* SMContext::open(void)
 {
@@ -120,8 +120,17 @@ std::string SMContext::geterror(void)
       {
       JS::RootedObject excobj(context, &excpt.toObject());
       JSErrorReport* errep = JS_ErrorFromException(context, excobj);
+      ret = std::format("'{}' at line {}\n", JS_EncodeStringToUTF8(this->context, message).get(), errep->lineno);
 
-      ret = std::format("'{}' at line {}", JS_EncodeStringToUTF8(this->context, message).get(), errep->lineno);
+      JS::RootedValue cause(context);
+      if(JS_GetProperty(context, excobj, "stack", &cause))
+           {
+           JS::RootedString cmess(context, JS::ToString(context, cause ));
+           if(!cmess)
+               ret += std::format("No stack information");
+           else
+               ret += std::format("Calling stack:\n {}", JS_EncodeStringToUTF8(context, cmess).get());
+           }
       }
  }
 

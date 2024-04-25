@@ -2,16 +2,24 @@
 #include <Python.h>
 #include <iostream>
 #include <format>
+#include <js/Object.h>
 #include "smjspython.h"
 
 extern const char* smobjattrname;
 static JSClass smjsClass = { "Object", JSCLASS_HAS_RESERVED_SLOTS(1), nullptr };
+extern JSClass SMGlobalClass;
 
 PyObject* smjs_conv_string(JSContext* ctx, const JS::MutableHandleValue& value)
 {
  JS::RootedString strvalue(ctx, value.toString());
  std::string str = JS_EncodeStringToUTF8(ctx, strvalue).get();
  return PyUnicode_FromString(str.c_str());
+}
+
+PyObject* smjs_conv_object(JSContext* ctx, const JS::MutableHandleValue& value)
+{
+ JSObject* jobj = &value.toObject();
+ return JS::GetMaybePtrFromReservedSlot<PyObject>(jobj, SlotPtr);
 }
 
 PyObject* smjs_conv_none(JSContext* ctx, const JS::MutableHandleValue& value)
@@ -27,7 +35,10 @@ jsconv_t smjs_getconvertor(JSContext* ctx, const JS::MutableHandleValue& value)
      return smjs_conv_none;
  else if(value.isObject())
     {
-    JS_ReportErrorUTF8(ctx, "Objects are not yet implemented");
+    const JSClass* jcls = JS::GetClass(&value.toObject());
+    if (jcls == &smjsClass || jcls == &SMGlobalClass)
+        return smjs_conv_object;
+    JS_ReportErrorUTF8(ctx, "Native objects are not yet implemented");
     return NULL;
     }
  else
