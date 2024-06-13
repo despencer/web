@@ -16,6 +16,12 @@ PyObject* smjs_conv_string(JSContext* ctx, const JS::MutableHandleValue& value)
  return PyUnicode_FromString(str.c_str());
 }
 
+PyObject* smjs_conv_int32(JSContext* ctx, const JS::MutableHandleValue& value)
+{
+ long pval = value.toInt32();
+ return PyLong_FromLong(pval);
+}
+
 PyObject* smjs_conv_object(JSContext* ctx, const JS::MutableHandleValue& value)
 {
  JSObject* jobj = &value.toObject();
@@ -41,6 +47,8 @@ jsconv_t smjs_getconvertor(JSContext* ctx, const JS::MutableHandleValue& value)
     JS_ReportErrorUTF8(ctx, "Native objects are not yet implemented");
     return NULL;
     }
+ else if(value.isInt32())
+    return smjs_conv_int32;
  else
     {
     uint64_t data = *(uint64_t*)(void*)&value;
@@ -120,6 +128,11 @@ bool smjs_convertresult(JSContext* ctx, PyObject* context, JS::CallArgs& args, P
             }
         args.rval().setObject(*(*jsobj));
         }
+    }
+ else if(strcmp(tname, "int") == 0)
+    {
+    long value = PyLong_AsLong(pobj);
+    args.rval().setNumber(value);
     }
  else
     {
