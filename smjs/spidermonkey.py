@@ -14,13 +14,16 @@ class Context:
         smjs.init_context(self)
 
     def close(self):
-       smjs.close_context(self)
+        smjs.close_context(self)
 
     def execute(self, jscode):
-       smjs.execute(self, jscode)
+        smjs.execute(self, jscode)
 
     def funccall(self, obj, funcname, args):
-       return obj._smjsfuncs_[funcname](*args)
+        return obj._smjsfuncs_[funcname](*args)
+
+    def calljsfunc(self, funcproxy):
+        print(funcproxy)
 
     def objectsync(self, obj):
         ''' Fill the JavaScript object with Python project attributes '''
