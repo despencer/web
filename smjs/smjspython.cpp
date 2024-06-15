@@ -18,10 +18,18 @@ static const char* globalattrname = "globj";
 // function name for object attribute synchronization
 static const char* funcobjsync = "objectsync";
 
+// function name for proxy creation
+static const char* funcproxycreate = "createproxy";
+
 // name of Python object's attribute for keeping reference to a corresponding JavaScript object
 const char* smobjattrname = "_smjs_";
 
+// name of JS object's property for keeping reference to a corresponding Python object
+const char* smobjpropname = "_smjspy_";
+
 static PyObject* smerrorclass = NULL;
+
+static JSClass smjsClassRef = { "ObjectPythonRef", JSCLASS_HAS_RESERVED_SLOTS(1), nullptr };
 
 static PyObject* smjs_open_context(PyObject* module, PyObject* args)
 {
@@ -127,6 +135,25 @@ void smjs_bindobjects(PyObject* context, JS::RootedObject* jsobj, PyObject* pyob
  Py_XDECREF(function);
 }
 
+PyObject* smjs_bindnativeobjects(JSContext* ctx, PyObject* context, JS::RootedObject* jsobj)
+{
+   // creating reference to a JS object
+ PyObject* capsule = PyCapsule_New(jsobj, NULL, NULL);
+
+   // creating python proxy object, XDECREF is safe because all proxies are stored in array in context
+ PyObject* function = PyObject_GetAttrString(context, funcproxycreate);
+ PyObject* pyobject = PyObject_CallFunctionObjArgs(function, capsule, NULL);
+ Py_XDECREF(pyobject);
+ Py_XDECREF(function);
+
+ // setting cross-reference from JS to Python
+ JS::RootedObject jsrefobj(ctx, JS_NewObject(ctx, &smjsClassRef));
+ JS::RootedValue vprop(ctx, JS::ObjectValue(*jsrefobj) );
+ JS::SetReservedSlot(jsrefobj, SlotPtr, JS::PrivateValue(pyobject));
+ JS_SetProperty(ctx, *jsobj, smobjpropname, vprop );
+ return pyobject;
+}
+
 /* This is a function for calling python global functions that are mapped via smjs_add_globalfunction
  * It is called by SpiderMonkey proxy function with python name and JS args provided
  *
@@ -152,7 +179,7 @@ static bool proxycall(std::string& name, void* proxydata, JSContext* ctx, JS::Ca
  PyObject* function = PyObject_GetAttrString(context, "funccall");
  PyObject* pname =  PyUnicode_FromString(name.c_str());
 
- PyObject* pargs = smjs_convert(ctx, args, convertors);
+ PyObject* pargs = smjs_convert(ctx, context, args, convertors);
  if(pargs != NULL)
    {
    PyObject* result = PyObject_CallFunctionObjArgs(function, pyobject, pname, pargs, NULL);
@@ -205,7 +232,7 @@ bool proxysetter(std::string& name, void* proxydata, JSContext* ctx, JS::CallArg
  PyObject* pyobject = getpyobjfromjs(ctx, args);
  if(pyobject == NULL) return false;
 
- PyObject* value = smjs_convertsingle(ctx, args[0]);
+ PyObject* value = smjs_convertsingle(ctx, (PyObject*)proxydata, args[0]);
  if(value == NULL) return false;
 
  PyObject_SetAttrString(pyobject, name.c_str(), value);

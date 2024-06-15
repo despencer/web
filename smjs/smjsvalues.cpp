@@ -6,29 +6,41 @@
 #include "smjspython.h"
 
 extern const char* smobjattrname;
-static JSClass smjsClass = { "Object", JSCLASS_HAS_RESERVED_SLOTS(1), nullptr };
+extern const char* smobjpropname;
+static JSClass smjsClassProxy = { "ObjectPythonProxy", JSCLASS_HAS_RESERVED_SLOTS(1), nullptr };
 extern JSClass SMGlobalClass;
 
-PyObject* smjs_conv_string(JSContext* ctx, const JS::MutableHandleValue& value)
+PyObject* smjs_conv_string(JSContext* ctx, PyObject*, const JS::MutableHandleValue& value)
 {
  JS::RootedString strvalue(ctx, value.toString());
  std::string str = JS_EncodeStringToUTF8(ctx, strvalue).get();
  return PyUnicode_FromString(str.c_str());
 }
 
-PyObject* smjs_conv_int32(JSContext* ctx, const JS::MutableHandleValue& value)
+PyObject* smjs_conv_int32(JSContext* ctx, PyObject*, const JS::MutableHandleValue& value)
 {
  long pval = value.toInt32();
  return PyLong_FromLong(pval);
 }
 
-PyObject* smjs_conv_object(JSContext* ctx, const JS::MutableHandleValue& value)
+PyObject* smjs_conv_object(JSContext* ctx, PyObject*, const JS::MutableHandleValue& value)
 {
  JSObject* jobj = &value.toObject();
  return JS::GetMaybePtrFromReservedSlot<PyObject>(jobj, SlotPtr);
 }
 
-PyObject* smjs_conv_none(JSContext* ctx, const JS::MutableHandleValue& value)
+PyObject* smjs_conv_native(JSContext* ctx, PyObject* context, const JS::MutableHandleValue& value)
+{
+ JS::RootedValue vprop(ctx);
+ JS::RootedObject jsobj(ctx, &value.toObject());
+ JS_GetProperty(ctx, jsobj, smobjpropname, &vprop);
+ if (vprop.isUndefined() )
+     return smjs_bindnativeobjects(ctx, context, &jsobj);
+ JS::RootedObject refobj(ctx, &vprop.toObject());
+ return JS::GetMaybePtrFromReservedSlot<PyObject>(refobj, SlotPtr);
+}
+
+PyObject* smjs_conv_none(JSContext* ctx, PyObject* context, const JS::MutableHandleValue& value)
 {
  Py_RETURN_NONE;
 }
@@ -42,10 +54,10 @@ jsconv_t smjs_getconvertor(JSContext* ctx, const JS::MutableHandleValue& value)
  else if(value.isObject())
     {
     const JSClass* jcls = JS::GetClass(&value.toObject());
-    if (jcls == &smjsClass || jcls == &SMGlobalClass)
+    if (jcls == &smjsClassProxy || jcls == &SMGlobalClass)
         return smjs_conv_object;
-    JS_ReportErrorUTF8(ctx, "Native objects are not yet implemented");
-    return NULL;
+//    JS_ReportErrorUTF8(ctx, "Native objects are not yet implemented");
+    return smjs_conv_native;
     }
  else if(value.isInt32())
     return smjs_conv_int32;
@@ -76,19 +88,19 @@ jsconv_t* smjs_getconvertors(JSContext* ctx, JS::CallArgs& args)
  return ret;
 }
 
-PyObject* smjs_convert(JSContext* ctx, JS::CallArgs& args, jsconv_t* converters)
+PyObject* smjs_convert(JSContext* ctx, PyObject* context, JS::CallArgs& args, jsconv_t* converters)
 {
  PyObject* list = PyList_New(0);
  for(unsigned int i=0; i<args.length(); i++)
-   PyList_Append(list, converters[i](ctx, args[i]));
+   PyList_Append(list, converters[i](ctx, context, args[i]));
  return list;
 }
 
-PyObject* smjs_convertsingle(JSContext* ctx, const JS::MutableHandleValue& value)
+PyObject* smjs_convertsingle(JSContext* ctx, PyObject* context, const JS::MutableHandleValue& value)
 {
  jsconv_t conv = smjs_getconvertor(ctx, value);
  if(conv == NULL) return NULL;
- return conv(ctx, value);
+ return conv(ctx, context, value);
 }
 
 bool smjs_convertresult(JSContext* ctx, PyObject* context, JS::CallArgs& args, PyObject* pobj)
@@ -111,7 +123,7 @@ bool smjs_convertresult(JSContext* ctx, PyObject* context, JS::CallArgs& args, P
     if(capsule == NULL)
         {
            // create and bind JS Object
-        JS::RootedObject* jsobj = new JS::RootedObject(ctx, JS_NewObject(ctx, &smjsClass));
+        JS::RootedObject* jsobj = new JS::RootedObject(ctx, JS_NewObject(ctx, &smjsClassProxy));
         if(!(*jsobj)) return NULL;
         smjs_bindobjects(context, jsobj, pobj);
         args.rval().setObject(*(*jsobj));

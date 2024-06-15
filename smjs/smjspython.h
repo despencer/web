@@ -5,13 +5,14 @@
 #include <jsapi.h>
 #include "smjs.h"
 
-typedef PyObject* (*jsconv_t)(JSContext* ctx, const JS::MutableHandleValue& value);
+typedef PyObject* (*jsconv_t)(JSContext* ctx, PyObject* context, const JS::MutableHandleValue& value);
 
 jsconv_t* smjs_getconvertors(JSContext* ctx, JS::CallArgs& args);
-PyObject* smjs_convert(JSContext* ctx, JS::CallArgs& args, jsconv_t* converters);
-PyObject* smjs_convertsingle(JSContext* ctx, const JS::MutableHandleValue& value);
+PyObject* smjs_convert(JSContext* ctx, PyObject* context, JS::CallArgs& args, jsconv_t* converters);
+PyObject* smjs_convertsingle(JSContext* ctx, PyObject* context, const JS::MutableHandleValue& value);
 bool smjs_convertresult(JSContext* ctx, PyObject* context, JS::CallArgs& args, PyObject* pobj);
 void smjs_bindobjects(PyObject* context, JS::RootedObject* jsobj, PyObject* pyobject);
+PyObject* smjs_bindnativeobjects(JSContext* ctx, PyObject* context, JS::RootedObject* jsobj);
 PyObject* getpyobjfromjs(JSContext* ctx, JS::CallArgs& args);
 
 class SMPythonContext

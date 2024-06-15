@@ -1,8 +1,13 @@
 import smjs
 
+class Proxy:
+    def __init__(self, capsule):
+        self.capsule = capsule
+
 class Context:
     def __init__(self, globj):
         self.globj = globj
+        self.proxies = []
 
     def open(self):
         smjs.open_context(self)
@@ -29,6 +34,12 @@ class Context:
                     smjs.add_objectfunction(self, obj, name)
                 else:
                     smjs.add_objectproperty(self, obj, name)
+
+    def createproxy(self, capsule):
+        ''' Creates a proxy python object for JS  object and stores it into list in order not to be garbage collected '''
+        proxy = Proxy(capsule)
+        self.proxies.append(proxy)
+        return proxy
 
     def __enter__(self):
         self.open()
