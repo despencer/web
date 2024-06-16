@@ -133,18 +133,32 @@ static PyObject* smjs_callfunc(PyObject* module, PyObject* args)
  JS::PersistentRootedObject* jpers = (JS::PersistentRootedObject*)PyCapsule_GetPointer(capsule, NULL);
  JS::RootedObject jsobj(ctx, *jpers);
  JS::RootedValue func(ctx, JS::ObjectValue(*jsobj));
-
-// JS::RootedValue func(ctx, *jpers);
-
-// JS::RootedObject* jsobj = (JS::RootedObject*)PyCapsule_GetPointer(capsule, NULL);
-// JS::RootedValue func(ctx, JS::ObjectValue(* (*jsobj) ) );
-
  JS::RootedValue rval(ctx);
  if(! JS_CallFunctionValue(ctx, nullptr, func, JS::HandleValueArray::empty(), &rval))
     return NULL;
 
  JS::MutableHandleValue rv(&rval);
  return smjs_convertsingle(ctx, context, rv);
+}
+
+static PyObject* smjs_freeproxy(PyObject* module, PyObject* args)
+{
+ PyObject* context = NULL;
+ PyObject* capsule = NULL;
+ if(!PyArg_ParseTuple(args, "OO", &context, &capsule))
+    return NULL;
+
+ SMPythonContext* pytcx = getcontext(context);
+ if(pytcx == NULL) return NULL;
+ JSContext* ctx = pytcx->sm->context;
+
+ JS::PersistentRootedObject* jpers = (JS::PersistentRootedObject*)PyCapsule_GetPointer(capsule, NULL);
+ JS::RootedObject jsobj(ctx, *jpers);
+ JS::ObjectOpResult res;
+ JS_DeleteProperty(ctx, jsobj, smobjpropname, res);
+ jpers->reset(); delete jpers;
+
+ Py_RETURN_NONE;
 }
 
 void smjs_bindobjects(PyObject* context, JS::RootedObject* jsobj, PyObject* pyobject)
@@ -165,8 +179,8 @@ void smjs_bindobjects(PyObject* context, JS::RootedObject* jsobj, PyObject* pyob
 
 PyObject* smjs_bindnativeobjects(JSContext* ctx, PyObject* context, JS::RootedObject* jsobj)
 {
- JS::PersistentRootedObject* jpers = new JS::PersistentRootedObject(ctx, *jsobj);
    // creating reference to a JS object
+ JS::PersistentRootedObject* jpers = new JS::PersistentRootedObject(ctx, *jsobj);
  PyObject* capsule = PyCapsule_New(jpers, NULL, NULL);
 
    // creating python proxy object, XDECREF is safe because all proxies are stored in array in context
@@ -332,6 +346,7 @@ static PyMethodDef smjs_methods[] =
 // {"add_globalobject", smjs_add_globalobject, METH_VARARGS, "Adds a global object to the JavaScript"},
  {"add_objectproperty", smjs_add_objectproperty, METH_VARARGS, "Adds a property to an object"},
  {"add_objectfunction", smjs_add_objectfunction, METH_VARARGS, "Adds a function to an object"},
+ {"freeproxy", smjs_freeproxy, METH_VARARGS, "Frees a proxy to an JavaScript object"},
  {"shutdown", smjs_shutdown, METH_VARARGS, "Shutdowns the SpiderMoney JavaScript engine"},
  {NULL, NULL, 0, NULL}
 };

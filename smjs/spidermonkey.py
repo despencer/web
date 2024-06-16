@@ -14,6 +14,8 @@ class Context:
         smjs.init_context(self)
 
     def close(self):
+        for p in self.proxies:
+            self.freeproxy(p)
         smjs.close_context(self)
 
     def execute(self, jscode):
@@ -43,6 +45,9 @@ class Context:
         proxy = Proxy(capsule)
         self.proxies.append(proxy)
         return proxy
+
+    def freeproxy(self, aproxy):
+        smjs.freeproxy(self, aproxy.capsule)
 
     def __enter__(self):
         self.open()
