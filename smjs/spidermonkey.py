@@ -23,7 +23,7 @@ class Context:
         return obj._smjsfuncs_[funcname](*args)
 
     def calljsfunc(self, funcproxy):
-        print(funcproxy)
+        return smjs.callfunc(self, funcproxy.capsule)
 
     def objectsync(self, obj):
         ''' Fill the JavaScript object with Python project attributes '''

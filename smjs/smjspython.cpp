@@ -119,6 +119,34 @@ static PyObject* smjs_execute(PyObject* module, PyObject* args)
  Py_RETURN_NONE;
 }
 
+static PyObject* smjs_callfunc(PyObject* module, PyObject* args)
+{
+ PyObject* context = NULL;
+ PyObject* capsule = NULL;
+ if(!PyArg_ParseTuple(args, "OO", &context, &capsule))
+    return NULL;
+
+ SMPythonContext* pytcx = getcontext(context);
+ if(pytcx == NULL) return NULL;
+ JSContext* ctx = pytcx->sm->context;
+
+ JS::PersistentRootedObject* jpers = (JS::PersistentRootedObject*)PyCapsule_GetPointer(capsule, NULL);
+ JS::RootedObject jsobj(ctx, *jpers);
+ JS::RootedValue func(ctx, JS::ObjectValue(*jsobj));
+
+// JS::RootedValue func(ctx, *jpers);
+
+// JS::RootedObject* jsobj = (JS::RootedObject*)PyCapsule_GetPointer(capsule, NULL);
+// JS::RootedValue func(ctx, JS::ObjectValue(* (*jsobj) ) );
+
+ JS::RootedValue rval(ctx);
+ if(! JS_CallFunctionValue(ctx, nullptr, func, JS::HandleValueArray::empty(), &rval))
+    return NULL;
+
+ JS::MutableHandleValue rv(&rval);
+ return smjs_convertsingle(ctx, context, rv);
+}
+
 void smjs_bindobjects(PyObject* context, JS::RootedObject* jsobj, PyObject* pyobject)
 {
  // setting cross-reference from JS to Python
@@ -137,8 +165,9 @@ void smjs_bindobjects(PyObject* context, JS::RootedObject* jsobj, PyObject* pyob
 
 PyObject* smjs_bindnativeobjects(JSContext* ctx, PyObject* context, JS::RootedObject* jsobj)
 {
+ JS::PersistentRootedObject* jpers = new JS::PersistentRootedObject(ctx, *jsobj);
    // creating reference to a JS object
- PyObject* capsule = PyCapsule_New(jsobj, NULL, NULL);
+ PyObject* capsule = PyCapsule_New(jpers, NULL, NULL);
 
    // creating python proxy object, XDECREF is safe because all proxies are stored in array in context
  PyObject* function = PyObject_GetAttrString(context, funcproxycreate);
@@ -298,6 +327,7 @@ static PyMethodDef smjs_methods[] =
  {"init_context", smjs_init_context, METH_VARARGS, "Initializes a SpiderMonkey JavaScript context"},
  {"close_context", smjs_close_context, METH_VARARGS, "Closes a SpiderMonkey JavaScript context"},
  {"execute", smjs_execute, METH_VARARGS, "Execute a JavaScript"},
+ {"callfunc", smjs_callfunc, METH_VARARGS, "Calls a JavaScript function"},
 // {"add_globalfunction", smjs_add_globalfunction, METH_VARARGS, "Adds a global function to the JavaScript"},
 // {"add_globalobject", smjs_add_globalobject, METH_VARARGS, "Adds a global object to the JavaScript"},
  {"add_objectproperty", smjs_add_objectproperty, METH_VARARGS, "Adds a property to an object"},
