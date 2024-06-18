@@ -1,15 +1,47 @@
-class ElementProxy:
-    def __init__(self, node):
+class NodeProxy:
+    def __init__(self, manager, node):
+        self.manager = manager
         self.node = node
+        self.checkattrs( ['nodeType', 'documentElement'] )
 
-class DocumentProxy:
-    def __init__(self, node):
-        self.node = node
-        self.nodeType = node.nodeType
-        self.documentElement = ElementProxy(node.documentElement)
+    def checkattrs(self, names):
+        for name in names:
+            if hasattr(self.node, name):
+                setattr(self, name, self.manager.get(getattr(self.node, name)))
+
+    def appendChild(self, node):
+        node = self.manager.restore(node)
+        return self.manager.get(self.node.appendChild(node))
 
     def createElement(self, tagname):
-        return ElementProxy(self.node.createElement(tagname))
+        return self.manager.get(self.node.createElement(tagname))
+
+    def createDocumentFragment(self):
+        return self.manager.get(self.node.createDocumentFragment())
+
+class ProxyManager:
+    def __init__(self):
+        self.proxies = {}
+        self.back = {}
+        self.proxyclasses = ['Node', 'DocumentFragment', 'Attr', 'Element', 'CharacterData',
+                   'Text', 'CDATASection', 'DocumentType', 'Entity', 'Notation', 'ElementInfo', 'Document']
+        self.passclasses = ['str','int']
+
+    def get(self, obj):
+        if obj in self.proxies:
+            return self.proxies[obj]
+        if obj.__class__.__name__ in self.passclasses:
+            return obj
+        if obj.__class__.__name__ in self.proxyclasses:
+            self.proxies[obj] = NodeProxy(self, obj)
+            self.back[ self.proxies[obj] ] = obj
+            return self.proxies[obj]
+        raise Exception( 'Unknown class ' + obj.__class__.__name__ + ' for ProxyManager')
+
+    def restore(self, obj):
+        if obj in self.back:
+            return self.back[obj]
+        return obj
 
 class Console:
     def log(self, *msg):
@@ -42,5 +74,6 @@ class Window:
 
 def setupcontext(dom):
     window = Window()
-    window.document = DocumentProxy(dom)
+    pm = ProxyManager()
+    window.document = pm.get(dom)
     return window
