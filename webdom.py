@@ -19,6 +19,12 @@ class NodeProxy:
     def createDocumentFragment(self):
         return self.manager.get(self.node.createDocumentFragment())
 
+    def setAttribute(self, name, value):
+        self.node.setAttribute(name, value)
+
+    def cloneNode(self, deep):
+        return self.manager.get(self.node.cloneNode(deep))
+
 class ProxyManager:
     def __init__(self):
         self.proxies = {}

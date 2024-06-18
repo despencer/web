@@ -23,6 +23,13 @@ PyObject* smjs_conv_int32(JSContext* ctx, PyObject*, const JS::MutableHandleValu
  return PyLong_FromLong(pval);
 }
 
+PyObject* smjs_conv_bool(JSContext* ctx, PyObject*, const JS::MutableHandleValue& value)
+{
+ if(value.toBoolean())
+     return Py_True;
+ return Py_False;
+}
+
 PyObject* smjs_conv_object(JSContext* ctx, PyObject*, const JS::MutableHandleValue& value)
 {
  JSObject* jobj = &value.toObject();
@@ -61,11 +68,13 @@ jsconv_t smjs_getconvertor(JSContext* ctx, const JS::MutableHandleValue& value)
     }
  else if(value.isInt32())
     return smjs_conv_int32;
+ else if(value.isBoolean())
+    return smjs_conv_bool;
  else
     {
     uint64_t data = *(uint64_t*)(void*)&value;
     data = data >> 47;
-    std::string error = std::format("Unrecongnized JS type {:X}", data);
+    std::string error = std::format("Unrecognized JS type {:X}", data);
     JS_ReportErrorUTF8(ctx, error.c_str());
     return NULL;
     }
