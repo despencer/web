@@ -1,8 +1,17 @@
+import xml.dom
+import webhtml
+
 class NodeProxy:
     def __init__(self, manager, node):
         self.manager = manager
         self.node = node
-        self.checkattrs( ['nodeType', 'documentElement'] )
+        self.checkattrs( ['nodeType', 'documentElement', 'lastChild', 'implementation'] )
+        if hasattr(self, 'nodeType') and self.nodeType == xml.dom.Node.DOCUMENT_NODE:
+            bodies = self.node.getElementsByTagName('body')
+            if len(bodies) > 0:
+                self.body = self.manager.get(bodies[0])
+            else:
+                self.body = None
 
     def checkattrs(self, names):
         for name in names:
@@ -19,6 +28,9 @@ class NodeProxy:
     def createDocumentFragment(self):
         return self.manager.get(self.node.createDocumentFragment())
 
+    def createHTMLDocument(self, title):
+        return self.manager.get(webhtml.parse('<html><head><title>' + title + '</title></head><body></body></html>'))
+
     def setAttribute(self, name, value):
         self.node.setAttribute(name, value)
 
@@ -30,10 +42,13 @@ class ProxyManager:
         self.proxies = {}
         self.back = {}
         self.proxyclasses = ['Node', 'DocumentFragment', 'Attr', 'Element', 'CharacterData',
-                   'Text', 'CDATASection', 'DocumentType', 'Entity', 'Notation', 'ElementInfo', 'Document']
+                   'Text', 'CDATASection', 'DocumentType', 'Entity', 'Notation', 'ElementInfo', 'Document',
+                   'DOMImplementation']
         self.passclasses = ['str','int']
 
     def get(self, obj):
+        if obj == None:
+            return None
         if obj in self.proxies:
             return self.proxies[obj]
         if obj.__class__.__name__ in self.passclasses:
