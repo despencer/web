@@ -1,11 +1,16 @@
 import xml.dom
 import webhtml
 
+class ContainerProxy:
+    def __init__(self, manager, collection):
+        self.manager = manager
+        self.collection = collection
+
 class NodeProxy:
     def __init__(self, manager, node):
         self.manager = manager
         self.node = node
-        self.checkattrs( ['nodeType', 'documentElement', 'lastChild', 'implementation'] )
+        self.checkattrs( ['nodeType', 'documentElement', 'lastChild', 'childNodes', 'implementation'] )
         if hasattr(self, 'nodeType') and self.nodeType == xml.dom.Node.DOCUMENT_NODE:
             bodies = self.node.getElementsByTagName('body')
             if len(bodies) > 0:
@@ -41,6 +46,7 @@ class ProxyManager:
     def __init__(self):
         self.proxies = {}
         self.back = {}
+        self.proxyconts = [ 'EmptyNodeList', 'NodeList' ]
         self.proxyclasses = ['Node', 'DocumentFragment', 'Attr', 'Element', 'CharacterData',
                    'Text', 'CDATASection', 'DocumentType', 'Entity', 'Notation', 'ElementInfo', 'Document',
                    'DOMImplementation']
@@ -49,6 +55,8 @@ class ProxyManager:
     def get(self, obj):
         if obj == None:
             return None
+        if obj.__class__.__name__ in self.proxyconts:
+            return ContainerProxy(self, obj)
         if obj in self.proxies:
             return self.proxies[obj]
         if obj.__class__.__name__ in self.passclasses:
