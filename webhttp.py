@@ -51,6 +51,10 @@ class HttpResponse:
             ck.expires = datetime(1970,1,1,tzinfo=timezone.utc)+timedelta(seconds=c.expires) if c.expires != None else None
             self.cookies.append(ck)
 
+class HttpContext:
+    def __init__(self):
+        self.useragent = 'User-Agent: Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:94.0) Gecko/20100101 Firefox/115.0'
+
 class Cache:
     def __init__(self):
         self.pages = {}
@@ -68,6 +72,7 @@ class Cache:
 
 class Browser:
     def __init__(self, gateway):
+        self.httpcontext = HttpContext()
         self.gateway = gateway
         self.cache = Cache()
         self.javascript = None
@@ -90,7 +95,7 @@ class Browser:
         resp = self.makerequest(url)
         if resp.status == HttpResponse.RESPONSE_OK:
             dom = webhtml.parse(resp.content)
-            window = webdom.setupcontext(dom)
+            window = webdom.setupcontext(dom, self.httpcontext)
             self.javascript = spidermonkey.connect(window)
             self.javascript.open()
             self.engine = webscript.JavaScriptEngine(self.javascript, self, window, dom, url)

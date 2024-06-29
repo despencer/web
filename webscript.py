@@ -24,7 +24,7 @@ class JavaScriptEngine:
             node = scripts.pop(0)
             code = self.getcode(node)
             self.execute(code)
-        self.window.processevents(context)
+        self.window.processevents(self.context)
 
     def getscripts(self):
         scripts = []

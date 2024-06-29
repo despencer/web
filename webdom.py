@@ -100,6 +100,10 @@ class DomEvent:
     def initCustomEvent(self, name, canBubble, cancelable, detail):
         pass
 
+class Navigator:
+    def __init__(self, userAgent):
+        self.userAgent = userAgent
+
 class Console:
     def log(self, *msg):
         print(*msg)
@@ -129,8 +133,9 @@ class Window:
     def setTimeout(self, *args):
         self.events.append( Event(args) )
 
-def setupcontext(dom):
+def setupcontext(dom, httpcontext):
     window = Window()
     pm = ProxyManager()
     window.document = pm.get(dom)
+    window.navigator = Navigator(httpcontext.useragent)
     return window
