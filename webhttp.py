@@ -3,6 +3,7 @@ import xml.dom
 import urllib
 import webhtml
 import webscript
+import webdom
 import sys
 import os
 sys.path.insert(1, os.path.expanduser('~/dev/web/smjs'))
@@ -69,6 +70,8 @@ class Browser:
     def __init__(self, gateway):
         self.gateway = gateway
         self.cache = Cache()
+        self.javascript = None
+        self.engine = None
 
     def makerequest(self, url):
         req = HttpRequest()
@@ -82,24 +85,24 @@ class Browser:
             self.cache.append(resp)
         return resp
 
-    def getscripts(self, dom):
-        scripts = []
-        for node in webhtml.traverse(dom):
-            if node.nodeType == xml.dom.Node.ELEMENT_NODE and node.nodeName == "script":
-                scripts.append(node)
-        return scripts
-
-    def runjs(self, dom, url):
-        with spidermonkey.connect() as context:
-            engine = webscript.JavaScriptEngine(context, self, dom, url)
-            engine.run()
-
     def loadpage(self, url):
-        self.cache.clear()
+        self.close()
         resp = self.makerequest(url)
         if resp.status == HttpResponse.RESPONSE_OK:
             dom = webhtml.parse(resp.content)
+            window = webdom.setupcontext(dom)
+            self.javascript = spidermonkey.connect(window)
+            self.javascript.open()
+            self.engine = webscript.JavaScriptEngine(self.javascript, self, window, dom, url)
             for l in webhtml.getlinks(dom, url):
                 if l.usage in ('image', 'css'):
                     self.makerequest(l.url)
-            self.runjs(dom, url)
+            self.engine.run()
+
+    def close(self):
+        self.cache.clear()
+        if self.javascript != None:
+            self.javascript.close()
+            self.javascript = None
+        self.engine = None
+

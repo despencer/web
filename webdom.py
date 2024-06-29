@@ -12,16 +12,31 @@ class NodeProxy:
         self.node = node
         self.checkattrs( ['nodeType', 'documentElement', 'lastChild', 'childNodes', 'implementation'] )
         if hasattr(self, 'nodeType') and self.nodeType == xml.dom.Node.DOCUMENT_NODE:
-            bodies = self.node.getElementsByTagName('body')
-            if len(bodies) > 0:
-                self.body = self.manager.get(bodies[0])
-            else:
-                self.body = None
+            self.body = self.selectfirst('body')
+            self.title = self.selectfirst(['head','title'])
+            if self.title != None:
+                self.title = self.title.gettext()
 
     def checkattrs(self, names):
         for name in names:
             if hasattr(self.node, name):
                 setattr(self, name, self.manager.get(getattr(self.node, name)))
+
+    def selectfirst(self, selector):
+        if isinstance(selector, list):
+            head = self.selectfirst(selector[0])
+            if head == None:
+                return None
+            if len(selector) > 1:
+                return head.selectfirst( selector[1:] )
+            return head
+        nodes = self.node.getElementsByTagName(selector)
+        if len(nodes) > 0:
+            return self.manager.get(nodes[0])
+        return None
+
+    def gettext(self):
+        return "".join(t.nodeValue for t in self.node.childNodes if t.nodeType == t.TEXT_NODE)
 
     def appendChild(self, node):
         node = self.manager.restore(node)
@@ -41,6 +56,12 @@ class NodeProxy:
 
     def cloneNode(self, deep):
         return self.manager.get(self.node.cloneNode(deep))
+
+    def createEvent(self, jstype):
+        return DomEvent(jstype)
+
+    def addEventListener(self, evtype, listener, *opt):
+        pass
 
 class ProxyManager:
     def __init__(self):
@@ -71,6 +92,13 @@ class ProxyManager:
         if obj in self.back:
             return self.back[obj]
         return obj
+
+class DomEvent:
+    def __init__(self, jstype):
+        self.jstype = jstype
+
+    def initCustomEvent(self, name, canBubble, cancelable, detail):
+        pass
 
 class Console:
     def log(self, *msg):

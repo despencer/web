@@ -11,22 +11,20 @@ class HtmlScript:
         self.url = url
 
 class JavaScriptEngine:
-    def __init__(self, context, browser, dom, baseurl):
+    def __init__(self, context, browser, window, dom, baseurl):
         self.context = context
         self.browser = browser
+        self.window = window
         self.dom = dom
         self.baseurl = baseurl
 
     def run(self):
-        self.init()
         scripts = self.getscripts()
         while len(scripts) > 0:
             node = scripts.pop(0)
             code = self.getcode(node)
             self.execute(code)
-
-    def init(self):
-        webdom.setupcontext(self.context, self.dom)
+        self.window.processevents(context)
 
     def getscripts(self):
         scripts = []

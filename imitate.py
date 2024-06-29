@@ -13,6 +13,7 @@ def main(args):
         browser = webhttp.Browser(imitator)
         browser.loadpage(jfile['log']['entries'][0]['request']['url'])
         imitator.check()
+        browser.close()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Imitates a browser via har file')
