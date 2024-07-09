@@ -1,4 +1,3 @@
-import html5lib
 import xml.dom
 import urllib.parse
 
@@ -106,6 +105,3 @@ def getnodepath(node):
 
 def getlinks(doc, base):
     return HtmlLinkExtractor(doc, base).extract()
-
-def parse(content):
-    return html5lib.parse(content, treebuilder='dom')
