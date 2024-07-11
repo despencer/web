@@ -7,33 +7,44 @@ class ContainerProxy:
         return iter(self.collection)
 
 class ProxyManager:
-    def __init__(self, nodeproxy, classes, containers, passthrough):
+    def __init__(self, classes, containers, passthrough):
         self.proxies = {}
         self.back = {}
-        self.nodeproxy = nodeproxy
-        self.proxyclasses = classes
-        self.proxyconts = containers
+        self.proxyclasses = self.makelookup(classes)
+        self.proxyconts = self.makelookup(containers)
         self.passclasses = passthrough
 
     def get(self, obj):
         if obj == None:
             return None
-        if obj.__class__.__name__ in self.proxyconts:
-            return ContainerProxy(self, obj)
+        clsname = obj.__class__.__name__
+        if clsname in self.proxyconts:
+            return self.proxyconts[clsname](self, obj)
         if obj in self.proxies:
             return self.proxies[obj]
-        if obj.__class__.__name__ in self.passclasses:
+        if clsname in self.passclasses:
             return obj
-        if obj.__class__.__name__ in self.proxyclasses:
-            self.proxies[obj] = self.nodeproxy(self, obj)
+        if clsname in self.proxyclasses:
+            self.proxies[obj] = self.proxyclasses[clsname](self, obj)
             self.back[ self.proxies[obj] ] = obj
             return self.proxies[obj]
-        raise Exception( 'Unknown class ' + obj.__class__.__name__ + ' for ProxyManager')
+        raise Exception( 'Unknown class ' + clsname + ' for ProxyManager')
 
     def restore(self, obj):
         if obj in self.back:
             return self.back[obj]
         return obj
+
+    def makelookup(self, params):
+        lookup = {}
+        for k,v in params.items():
+            if isinstance(v, list):
+                for c in v:
+                    lookup[c] = k
+            else:
+                lookup[v] = k
+        return lookup
+
 
 class EventTarget:
     def addEventListener(self, evtype, listener, *opt):

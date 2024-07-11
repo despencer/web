@@ -66,10 +66,10 @@ class NodeProxy(webdombase.EventTarget):
 
 
 def parse(content):
-    pm = webdombase.ProxyManager(NodeProxy,
+    pm = webdombase.ProxyManager({ NodeProxy : 
                    ['Node', 'DocumentFragment', 'Attr', 'Element', 'CharacterData',
                    'Text', 'CDATASection', 'DocumentType', 'Entity', 'Notation', 'ElementInfo', 'Document',
-                   'DOMImplementation'],
-                   [ 'EmptyNodeList', 'NodeList' ],
+                   'DOMImplementation'] },
+                   { webdombase.ContainerProxy : [ 'EmptyNodeList', 'NodeList' ] },
                    ['str','int'] )
     return pm.get(html5lib.parse(content, treebuilder='dom'))
