@@ -3,6 +3,7 @@ from urllib.parse import urlparse
 import webhtml
 import webdombase
 import webdomxml
+import webdombs
 
 class Navigator:
     def __init__(self, userAgent):
@@ -44,7 +45,7 @@ class Window(webdombase.EventTarget):
         self.events.append( Event(args) )
 
 def parsedom(content, builder = 'html5lib'):
-    return { 'html5lib': webdomxml.parse }[builder](content)
+    return { 'html5lib': webdomxml.parse, 'bs4': webdombs.parse }[builder](content)
 
 def setupcontext(dom, httpcontext, baseurl):
     window = Window()
