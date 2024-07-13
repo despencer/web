@@ -2,13 +2,19 @@ class Proxy:
     def __init__(self, manager):
         self.manager = manager
 
+    def mapattrs(self, obj, attrs):
+        for k,v in attrs.items():
+            if hasattr(obj, k):
+                setattr(self, v, self.manager.get(getattr(obj, k)))
+
 class ContainerProxy(Proxy):
     def __init__(self, manager, collection):
-        Proxy(self).__init__(manager)
+        Proxy.__init__(self, manager)
         self.collection = collection
 
     def __iter__(self):
-        return iter(self.collection)
+        for n in self.collection:
+            yield self.manager.get(n)
 
 class ProxyManager:
     def __init__(self, classes, containers, passthrough):
