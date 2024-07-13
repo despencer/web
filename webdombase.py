@@ -1,6 +1,10 @@
-class ContainerProxy:
-    def __init__(self, manager, collection):
+class Proxy:
+    def __init__(self, manager):
         self.manager = manager
+
+class ContainerProxy(Proxy):
+    def __init__(self, manager, collection):
+        Proxy(self).__init__(manager)
         self.collection = collection
 
     def __iter__(self):
