@@ -90,8 +90,8 @@ def prettyprint(doc, st):
 def traverse(node):
     yield node
     if node.nodeType == xml.dom.Node.ELEMENT_NODE:
-        for i in range(node.attributes.length):
-            yield AttrNode(node, node.attributes.item(i))
+        for a in node.attributes.values():
+            yield AttrNode(node, a)
     for c in node.childNodes:
         yield from traverse(c)
 

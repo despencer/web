@@ -6,12 +6,19 @@ class NodeProxy(webdombase.EventTarget):
     def __init__(self, manager, node):
         self.manager = manager
         self.node = node
-        self.checkattrs( ['nodeType', 'documentElement', 'lastChild', 'childNodes', 'implementation'] )
+        self.checkattrs( ['nodeName', 'nodeType', 'documentElement', 'lastChild', 'childNodes', 'implementation'] )
         if hasattr(self, 'nodeType') and self.nodeType == xml.dom.Node.DOCUMENT_NODE:
             self.body = self.selectfirst('body')
             self.title = self.selectfirst(['head','title'])
             if self.title != None:
                 self.title = self.title.gettext()
+        if hasattr(self, 'nodeType') and self.nodeType == xml.dom.Node.ELEMENT_NODE:
+            self.attributes = {}
+            for i in range(node.attributes.length):
+                a = node.attributes.item(i)
+                self.attributes[a.name] = self.manager.get(a)
+                self.attributes[a.name].name = a.name
+                self.attributes[a.name].value = a.value
 
     def checkattrs(self, names):
         for name in names:
@@ -67,7 +74,7 @@ class NodeProxy(webdombase.EventTarget):
 
 def parse(content):
     pm = webdombase.ProxyManager({ NodeProxy : 
-                   ['Node', 'DocumentFragment', 'Attr', 'Element', 'CharacterData',
+                   ['Node', 'DocumentFragment', 'Attr', 'Element', 'CharacterData', 'Comment',
                    'Text', 'CDATASection', 'DocumentType', 'Entity', 'Notation', 'ElementInfo', 'Document',
                    'DOMImplementation'] },
                    { webdombase.ContainerProxy : [ 'EmptyNodeList', 'NodeList' ] },
