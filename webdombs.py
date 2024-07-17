@@ -34,9 +34,28 @@ class Element(Node):
         for k,v in node.attrs.items():
             self.attributes[k] = Attribute(self.manager, k,v)
 
+class DocumentFragment(webdombase.Proxy):
+    def __init__(self, manager, document):
+        webdombase.Proxy.__init__(self, manager)
+        self.nodeType = xml.dom.Node.DOCUMENT_FRAGMENT_NODE
+        self.document = document
+
+    def createElement(self, tagname):
+        return self.document.createElement(tagname)
+
 class Document(Node):
     def __init__(self, manager, doc):
         Node.__init__(self, manager, doc, xml.dom.Node.DOCUMENT_NODE)
+
+    def createElement(self, tagname):
+        return self.manager.get(self.node.new_tag(tagname))
+
+    def createDocumentFragment(self):
+        return DocumentFragment(self.manager, self.node)
+
+    def createHTMLDocument(self, title):
+        return self.manager.get(bs4.BeautifulSoup('<html><head><title>' + title + '</title></head><body></body></html>', 'html5lib', multi_valued_attributes = None))
+
 
 def parse(content):
     pm = webdombase.ProxyManager({ Document : 'BeautifulSoup', SpecialNode: ['Doctype','Comment'], Element: 'Tag', Text: 'NavigableString'},

@@ -94,7 +94,7 @@ class Browser:
         self.close()
         resp = self.makerequest(url)
         if resp.status == HttpResponse.RESPONSE_OK:
-            dom = webhtml.parse(resp.content)
+            dom = webdom.parsedom(resp.content, builder='bs4')
             window = webdom.setupcontext(dom, self.httpcontext, url)
             self.javascript = spidermonkey.connect(window)
             self.javascript.open()
