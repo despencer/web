@@ -15,17 +15,19 @@ def loadhttpheaders(jheaders):
 def savehttpheaders(headers):
     jheaders = []
     for name, value in headers.items():
-        jheaders.append( { 'name':name, 'value':value } )
+        jheaders.append( { 'name':name.lower(), 'value':value } )
     return jheaders
 
 def loadhttpcookies(jcookies):
     cookies = []
     for jc in jcookies:
-        ck = HttpCookie()
+        ck = webhttp.HttpCookie()
         ck.name = jc['name']
         ck.value = jc['value']
-        ck.path = jc['path']
-        ck.domain = jc['domain']
+        if 'path' in jc:
+            ck.path = jc['path']
+        if 'domain' in jc:
+            ck.domain = jc['domain']
         if 'expires' in jc:
             ck.expires = datetime.fromisoformat(jc['expires'])
         cookies.append(ck)
@@ -53,7 +55,7 @@ def savehttpquery(query):
     return jquery
 
 def loadhttprequest(jreq):
-    req = HttpRequest()
+    req = webhttp.HttpRequest()
     req.method = jreq['method']
     req.url = jreq['url']
     req.headers = loadhttpheaders(jreq['headers'])
@@ -74,19 +76,20 @@ def loadhttpresponse(jresp):
 #    resp.cookies = loadhttpcookies(jresp['cookies'])
     return resp
 
-def savehttpresponce(resp):
-    return { 'status':resp.status, 'text':resp.text, 'headers':savehttpheaders(resp.headers), 'cookies':savehttpcookies(resp.cookies) }
+def savehttpresponse(resp):
+    return { 'status':resp.status, 'headers':savehttpheaders(resp.headers), 'cookies':savehttpcookies(resp.cookies),
+             'content':{'text':resp.content}  }
 
-def saveresponce(harfile, request, responce):
-    jentry = { 'request' : savehttprequest(request), 'response' : savehttpresponce(responce) }
+def saveresponse(harfile, request, response):
+    jentry = { 'request' : savehttprequest(request), 'response' : savehttpresponse(response) }
     with open(harfile, 'w') as jfile:
         json.dump( { 'log':{ 'entries' : [ jentry ] } } , jfile, indent = 4 )
 
-def loadresponce(harfile):
+def loadresponse(harfile):
     with open(harfile) as hfile:
         jfile = json.load(hfile)
         jresp = jfile['log']['entries'][0]['response']
-        return loadhttpresponce(jresp)
+        return loadhttpresponse(jresp)
 
 def loadrequest(harfile):
     with open(harfile) as hfile:

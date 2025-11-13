@@ -15,6 +15,7 @@ class HttpRequest:
         self.url = ''
         self.headers = {}
         self.cookies = []
+        self.query = {}
 
 class HttpCookie:
     def __init__(self):

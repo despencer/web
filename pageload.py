@@ -30,6 +30,8 @@ def download(name, url):
     soup = BeautifulSoup(resp.text, 'html.parser')
     with open(name+'.html', 'w') as hf:
         hf.write(soup.prettify())
+    with open(name+'.content', 'bw') as hc:
+        hc.write(resp.content)
     dumpdict(name+'.headers', resp.headers)
     dumpdict(name+'.cookies', resp.cookies)
 
