@@ -1,0 +1,27 @@
+package:
+   name: www
+   namespace: www
+   entities:
+     - name: page
+       columns:
+           - name: url
+             type: string
+           - name: downloaded
+             type: timestamp
+           - name: pagetype
+             type: string
+           - name: offset
+             type: int64
+           - name: length
+             type: int64
+     - name: waitinglist
+       columns:
+           - name: seqno
+             type: int32
+           - name: refcount
+             type: int32
+           - name: weight
+             type: int32
+           - name: url
+             type: string
+ 
