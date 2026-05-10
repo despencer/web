@@ -22,8 +22,8 @@ class HtmlLinkExtractor:
         self.base = base
         self.links = []
         self.index = []
-        self.attrs = {'script' : ['src'], 'link': ['href'], 'img': ['src'] }
-        self.usage = {'script':'script', 'link':'$rel', 'link.rel.icon':'image', 'link.rel.stylesheet':'css', 'img':'image'}
+        self.attrs = {'script' : ['src'], 'link': ['href'], 'a': ['href'],'img': ['src'] }
+        self.usage = {'script':'script', 'link':'$rel', 'link.rel.icon':'image', 'link.rel.stylesheet':'css', 'img':'image', 'a':'link'}
 
     def addlink(self, tagname, attrvalue, node):
         url = urllib.parse.urljoin(self.base, attrvalue)
@@ -31,14 +31,22 @@ class HtmlLinkExtractor:
             usage = self.usage[tagname]
             if usage[0] == '$':
                 attrname = usage[1:]
-                usage = self.usage[ '{0}.{1}.{2}'.format(tagname, attrname, node.attributes[attrname].value) ]
+                fqname = '{0}.{1}.{2}'.format(tagname, attrname, node.attributes[attrname].value)
+                if fqname in self.usage:
+                    usage = self.usage[fqname]
+                else:
+                    usage = 'unknown'
             self.links.append( HtmlLink(usage, attrvalue, url) )
             self.index.append(url)
 
     def extract(self):
         for node in traverse(self.doc):
-            if node.nodeType == xml.dom.Node.ATTRIBUTE_NODE and node.parentNode.nodeName in self.attrs and node.nodeName in self.attrs[node.parentNode.nodeName]:
-                self.addlink(node.parentNode.nodeName, node.nodeValue, node.parentNode)
+            if node.nodeType == xml.dom.Node.ATTRIBUTE_NODE:
+                parentName = node.parentNode.nodeName
+                if parentName[0:5] == 'html:':
+                    parentName = parentName[5:]
+                if parentName in self.attrs and node.nodeName in self.attrs[parentName]:
+                    self.addlink(parentName, node.nodeValue, node.parentNode)
         return self.links
 
 class HtmlPrettyPrinter:

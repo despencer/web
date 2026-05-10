@@ -9,7 +9,7 @@ import webscript
 def loadhttpheaders(jheaders):
     headers = {}
     for jheader in jheaders:
-        headers[jheader['name']] = jheader['value']
+        headers[jheader['name'].lower()] = jheader['value']
     return headers
 
 def savehttpheaders(headers):
@@ -71,9 +71,10 @@ def savehttprequest(req):
 def loadhttpresponse(jresp):
     resp = webhttp.HttpResponse()
     resp.status = jresp['status']
-    resp.content = jresp['content']['text']
+    if 'content' in jresp and 'text' in jresp['content']:
+        resp.content = jresp['content']['text']
     resp.headers = loadhttpheaders(jresp['headers'])
-#    resp.cookies = loadhttpcookies(jresp['cookies'])
+    resp.cookies = loadhttpcookies(jresp['cookies'])
     return resp
 
 def savehttpresponse(resp):
@@ -96,6 +97,17 @@ def loadrequest(harfile):
         jfile = json.load(hfile)
         jreq = jfile['log']['entries'][0]['request']
         return loadhttprequest(jreq)
+
+def load(harfile):
+    with open(harfile) as hfile:
+        jfile = json.load(hfile)
+        session = webhttp.HttpSession()
+        for jentry in jfile['log']['entries']:
+            load = webhttp.HttpLoad()
+            load.request = loadhttprequest(jentry['request'])
+            load.response = loadhttpresponse(jentry['response'])
+            session.entries.append(load)
+        return session
 
 class Imitator:
     def __init__(self, jhar, output):

@@ -25,12 +25,12 @@ class HttpCookie:
         self.path = '/'
         self.expires = None
 
-class HttpResponse:
-    RESPONSE_OK = 200
-    RESPONSE_MOVED = 301
-    RESPONSE_REDIRECT = 302
-    RESPONSE_NOTFOUND = 404
+RESPONSE_OK = 200
+RESPONSE_MOVED = 301
+RESPONSE_REDIRECT = 302
+RESPONSE_NOTFOUND = 404
 
+class HttpResponse:
     def __init__(self):
         self.request = None
         self.status = 0
@@ -51,6 +51,15 @@ class HttpResponse:
             ck.domain = c.domain
             ck.expires = datetime(1970,1,1,tzinfo=timezone.utc)+timedelta(seconds=c.expires) if c.expires != None else None
             self.cookies.append(ck)
+
+class HttpSession:
+    def __init__(self):
+        self.entries = []
+
+class HttpLoad:
+    def __init__(self):
+        self.request = HttpRequest()
+        self.response = HttpResponse()
 
 class HttpContext:
     def __init__(self):
