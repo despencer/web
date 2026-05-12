@@ -14,6 +14,7 @@ class Crawler:
         self.indexdb.open()
 
     def close(self):
+        self.indexdb.finish()
         self.indexdb.close()
 
     def __enter__(self):
@@ -22,6 +23,17 @@ class Crawler:
 
     def __exit__(self, extype, exvalue, extrace):
         self.close()
+
+    def addlink(self, url, weight):
+        pagelink = pagedb.WaitingUrl.get_byurl(self.indexdb, url)
+        if pagelink == None:
+            pagelink = pagedb.WaitingUrl.create(self.indexdb, 0, 1, weight, url)
+        else:
+            if pagelink.weight < weight:
+                pagelink.weight = weight
+            pagelink.seqno = 0
+            pagelink.refcount += 1
+            pagelink.update(self.indexdb)
 
     @classmethod
     def load(cls, filename):

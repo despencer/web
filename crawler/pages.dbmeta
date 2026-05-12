@@ -3,6 +3,7 @@ package:
    namespace: www
    entities:
      - name: page
+       class: Page
        columns:
            - name: url
              type: string
@@ -15,6 +16,7 @@ package:
            - name: length
              type: int64
      - name: waitinglist
+       class: WaitingUrl
        columns:
            - name: seqno
              type: int32
@@ -24,4 +26,10 @@ package:
              type: int32
            - name: url
              type: string
+       indices:
+           - columns: [ url ]
+             unique: true
+
+
+
  

@@ -9,5 +9,4 @@ if __name__ == '__main__':
     parser.add_argument('page', help='URL to add')
     args = parser.parse_args()
     with crawler.load(args.crawler) as crawl:
-        pass
-#        crawl.addlink(args.url, 1000)
+        crawl.addlink(args.page, 1000)
