@@ -9,6 +9,8 @@ package:
              type: string
            - name: downloaded
              type: timestamp
+           - name: status_code
+             type: int16
            - name: pagetype
              type: string
            - name: offset
