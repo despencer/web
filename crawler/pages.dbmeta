@@ -17,6 +17,8 @@ package:
              type: int64
            - name: length
              type: int64
+       indices:
+           - columns: [ url ]
      - name: waitinglist
        class: WaitingUrl
        columns:

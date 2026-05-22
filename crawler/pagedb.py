@@ -16,8 +16,10 @@ class Page:
         anobj.pagetype = pagetype
         anobj.offset = offset
         anobj.length = length
-        dbmeta.DbMeta.insert(db, anobj)
         return anobj
+
+    def insert(self, db):
+        return dbmeta.DbMeta.insert(db, self)
 
     def update(self, db):
         return dbmeta.DbMeta.update(db, self)
@@ -28,6 +30,11 @@ class Page:
     @classmethod
     def get(cls, db, id):
         return dbmeta.DbMeta.get(db, cls, id)
+
+
+    @classmethod
+    def get_byurl(cls, db, url):
+        return dbmeta.DbMeta.getlist(db, cls, "url = ?", url)
 
 
 class WaitingUrl:
@@ -42,8 +49,10 @@ class WaitingUrl:
         anobj.refcount = refcount
         anobj.weight = weight
         anobj.url = url
-        dbmeta.DbMeta.insert(db, anobj)
         return anobj
+
+    def insert(self, db):
+        return dbmeta.DbMeta.insert(db, self)
 
     def update(self, db):
         return dbmeta.DbMeta.update(db, self)
@@ -64,7 +73,8 @@ class WaitingUrl:
 
 def structure(db):
     db.deploypacket('www', 1, [
-    "CREATE TABLE www_page (id INTEGER NOT NULL, url TEXT NOT NULL, downloaded INTEGER NOT NULL, status_code INTEGER NOT NULL, pagetype TEXT NOT NULL, offset INTEGER NOT NULL, length INTEGER NOT NULL, PRIMARY KEY(id))",
+    "CREATE TABLE www_page (id INTEGER NOT NULL, url TEXT NOT NULL, downloaded INTEGER NOT NULL, status_code INTEGER NOT NULL, pagetype TEXT NOT NULL, offset INTEGER NOT NULL, length INTEGER NOT NULL, PRIMARY KEY(id))"
+    ,"CREATE INDEX www_page_IND1 ON www_page (url)",
     "CREATE TABLE www_waitinglist (id INTEGER NOT NULL, seqno INTEGER NOT NULL, refcount INTEGER NOT NULL, weight INTEGER NOT NULL, url TEXT NOT NULL, PRIMARY KEY(id))"
     ,"CREATE UNIQUE INDEX www_waitinglist_IND1 ON www_waitinglist (url)"])
     dbmeta.DbMeta.set(Page, 'www_page', ['id', 'url', 'downloaded', 'status_code', 'pagetype', 'offset', 'length'], readers={'downloaded':dbmeta.read_timestamp }, writers={'downloaded':dbmeta.write_timestamp })
