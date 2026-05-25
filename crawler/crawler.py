@@ -7,34 +7,40 @@ import urllib.parse
 from datetime import datetime, timezone
 import requests
 import html5lib
+import threading
 sys.path.append(os.path.expanduser('~/dev/pydma'))
 from dbmeta import Db, DbMeta
 import pagedb
 sys.path.append(os.path.dirname(__file__) + '/..')
 import webhtml
+import matcher
 
 class Downloader:
     def __init__(self, crawler):
         self.crawler = crawler
 
     def get_candidate(self):
+        candidate = None
         for wu in DbMeta.getlist(self.crawler.indexdb, pagedb.WaitingUrl, "1=1 ORDER BY refcount*weight DESC, seqno"):
-            if random.random() < 2:
-                return wu
-        return None
+            candidate = wu
+            if random.random() < 0.5:
+                break
+        return candidate
 
     def make_request(self, url):
+        print(f'Getting {url}')
         headers = self.crawler.headers.copy()
-        headers['host'] = urlparse(url).hostname
+        headers['host'] = urllib.parse.urlparse(url).hostname
         params = {}
         response = requests.request('GET', url, headers=headers, params=params, allow_redirects=False)
-        print(f"Get {response.status_code} of {response.headers['Content-Type']} for {url}")
+        logging.info(f"Url {wu.url}: get {response.status_code} of {response.headers['Content-Type']}")
         return response
 
     def download(self):
         candidate = self.get_candidate()
         if candidate == None:
             return None
+        logging.info(f'Url {candidate.url} was selected for downloading')
         response = self.make_request(candidate.url)
         offset = self.crawler.pager.store(response.content)
         page = pagedb.Page.create(self.crawler.indexdb, candidate.url, datetime.now(timezone.utc), response.status_code, response.headers['Content-Type'],
@@ -88,20 +94,23 @@ class Extractor:
     def clean(self, links):
         result = {}
         for l in links:
-            l.url = urllib.parse.urldefrag(l.url).url
+            l.url = urllib.parse.unquote(urllib.parse.urldefrag(l.url).url)
             result[l.url] = l
         return result
 
     def prepare(self, links, store):
         result = []
         for l in links:
+            if len(pagedb.Page.get_byurl(self.crawler.indexdb, l.url)) > 0:
+                continue
             wu = pagedb.WaitingUrl.get_byurl(self.crawler.indexdb, l.url)
             if wu == None:
-                weight = self.get_weight(l)
+                weight = self.crawler.matcher.get_weight(l)
                 if weight > 0:
                     wu = pagedb.WaitingUrl.create(self.crawler.indexdb, self.crawler.indexdb.genid(), 1, weight, l.url)
                     if store:
                         wu.insert(self.crawler.indexdb)
+                        logging.info(f'Url {wu.url} added')
                     result.append(wu)
             else:
                 wu.refcount += 1
@@ -109,9 +118,6 @@ class Extractor:
                     wu.update(self.crawler.indexdb)
                 result.append(wu)
         return result
-
-    def get_weight(self, link):
-        return 1
 
     def get_charset(self, page):
         if ';' not in page.pagetype or 'charset' not in page.pagetype:
@@ -123,6 +129,29 @@ class Extractor:
             return 'utf-8'
         return charset.split('=')[1].strip()
 
+class Runner:
+    def __init__(self, crawler):
+        self.crawler = crawler
+        self.thread = None
+        self.keeprunning = False
+
+    def start(self):
+        self.thread = threading.Thread(target = self.loop, daemon=True)
+        self.thread.start()
+
+    def loop(self):
+        self.keeprunning = True
+        while self.keeprunning:
+            page = self.crawler.download()
+            if page == None:
+                print('Nothing left to download')
+                self.stop()
+            else:
+                self.crawler.extract_links(page, True)
+
+    def stop(self):
+        self.keeprunning = False
+
 class Crawler:
     def __init__(self):
         self.indexdb = None
@@ -131,6 +160,7 @@ class Crawler:
         self.downloader = Downloader(self)
         self.pager = Pager(self)
         self.extractor = Extractor(self)
+        self.matcher = matcher.Matcher()
 
     def open(self):
         self.indexdb.open()
@@ -169,6 +199,11 @@ class Crawler:
     def extract_links(self, page, store):
         return self.extractor.extract(page, store)
 
+    def run(self):
+        runner = Runner(self)
+        runner.start()
+        return runner
+
     @classmethod
     def load(cls, filename):
         with open(filename) as fcrawler:
@@ -178,10 +213,8 @@ class Crawler:
             crawler.datafile = ycrawler['data']
             for jheader in ycrawler['request']['headers']:
                 crawler.headers[jheader['name'].lower()] = jheader['value']
+            crawler.matcher.load(ycrawler['links'])
             return crawler
 
 def load(fcrawler):
     return Crawler.load(fcrawler)
-
-
-
