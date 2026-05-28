@@ -33,7 +33,7 @@ class Downloader:
         headers['host'] = urllib.parse.urlparse(url).hostname
         params = {}
         response = requests.request('GET', url, headers=headers, params=params, allow_redirects=False)
-        logging.info(f"Url {wu.url}: get {response.status_code} of {response.headers['Content-Type']}")
+        logging.info(f"Url {url}: get {response.status_code} of {response.headers['Content-Type']}")
         return response
 
     def download(self):
@@ -129,29 +129,6 @@ class Extractor:
             return 'utf-8'
         return charset.split('=')[1].strip()
 
-class Runner:
-    def __init__(self, crawler):
-        self.crawler = crawler
-        self.thread = None
-        self.keeprunning = False
-
-    def start(self):
-        self.thread = threading.Thread(target = self.loop, daemon=True)
-        self.thread.start()
-
-    def loop(self):
-        self.keeprunning = True
-        while self.keeprunning:
-            page = self.crawler.download()
-            if page == None:
-                print('Nothing left to download')
-                self.stop()
-            else:
-                self.crawler.extract_links(page, True)
-
-    def stop(self):
-        self.keeprunning = False
-
 class Crawler:
     def __init__(self):
         self.indexdb = None
@@ -216,5 +193,40 @@ class Crawler:
             crawler.matcher.load(ycrawler['links'])
             return crawler
 
+
+class Runner:
+    def __init__(self):
+        self.thread = None
+        self.keeprunning = False
+
+    def run(self, fcrawler):
+        self.thread = threading.Thread(target = self.loop, args=(fcrawler, ), daemon=True)
+        self.thread.start()
+        input()
+        self.stop()
+
+    def loop(self, fcrawler):
+        with Crawler.load(fcrawler) as crawl:
+            print('Press ENTER to stop')
+            self.keeprunning = True
+            while self.keeprunning:
+                page = crawl.download()
+                if page == None:
+                    print('Nothing left to download')
+                    self.stop()
+                else:
+                    crawl.extract_links(page, True)
+
+    def stop(self):
+        self.keeprunning = False
+
 def load(fcrawler):
     return Crawler.load(fcrawler)
+
+def runner(fcrawler):
+    with crawler.load(args.crawler) as crawl:
+        print('Press ENTER to stop')
+        crawl.run()
+
+def run(fcrawler):
+    Runner().run(fcrawler)
