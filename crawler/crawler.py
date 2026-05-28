@@ -72,6 +72,10 @@ class Pager:
         self.pages.seek(page.offset)
         return self.pages.read(page.length)
 
+    def savepage(self, page, filename):
+        with open(filename, 'wb') as f:
+            f.write(self.load(page))
+
 class Extractor:
     def __init__(self, crawler):
         self.crawler = crawler
@@ -176,10 +180,12 @@ class Crawler:
     def extract_links(self, page, store):
         return self.extractor.extract(page, store)
 
-    def run(self):
-        runner = Runner(self)
-        runner.start()
-        return runner
+    def extract_page(self, url, filename):
+        pages = pagedb.Page.get_byurl(self.indexdb, url)
+        if len(pages) == 0:
+            return False
+        self.pager.savepage(pages[0], filename)
+        return True
 
     @classmethod
     def load(cls, filename):
