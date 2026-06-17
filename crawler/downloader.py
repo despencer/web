@@ -116,7 +116,7 @@ class Downloader:
         candidate = None
         for wu in DbMeta.getlist(self.crawler.indexdb, pagedb.WaitingUrl, "1=1 ORDER BY refcount*weight DESC, seqno"):
             candidate = wu
-            if random.random() > self.policy.novelty and self.policy.ready(candidate):
+            if random.random() < self.policy.novelty and self.policy.ready(candidate):
                 break
         return candidate
 
