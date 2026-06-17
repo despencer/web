@@ -8,5 +8,11 @@ if __name__ == '__main__':
     parser.add_argument('crawler', help='Crawler file')
     args = parser.parse_args()
     with crawler.load(args.crawler) as crawl:
-        page = crawl.download()
-        print(f'Load {page.url} as #{page.id}')
+        result = crawl.download()
+        if result == None:
+            print('Nothing to download')
+        else:
+            if result.page != None
+                print(f'Load {page.url} as #{page.id}')
+            else:
+                print(f'Got a {result.response.status_code} for {result.candidate.url}')

@@ -2,53 +2,18 @@ import logging
 import yaml
 import sys
 import os
-import random
 import urllib.parse
 from datetime import datetime, timezone
-import requests
 import html5lib
 import threading
+import time
 sys.path.append(os.path.expanduser('~/dev/pydma'))
 from dbmeta import Db, DbMeta
 import pagedb
 sys.path.append(os.path.dirname(__file__) + '/..')
 import webhtml
 import matcher
-
-class Downloader:
-    def __init__(self, crawler):
-        self.crawler = crawler
-
-    def get_candidate(self):
-        candidate = None
-        for wu in DbMeta.getlist(self.crawler.indexdb, pagedb.WaitingUrl, "1=1 ORDER BY refcount*weight DESC, seqno"):
-            candidate = wu
-            if random.random() < 0.5:
-                break
-        return candidate
-
-    def make_request(self, url):
-        print(f'Getting {url}')
-        headers = self.crawler.headers.copy()
-        headers['host'] = urllib.parse.urlparse(url).hostname
-        params = {}
-        response = requests.request('GET', url, headers=headers, params=params, allow_redirects=False)
-        logging.info(f"Url {url}: get {response.status_code} of {response.headers['Content-Type']}")
-        return response
-
-    def download(self):
-        candidate = self.get_candidate()
-        if candidate == None:
-            return None
-        logging.info(f'Url {candidate.url} was selected for downloading')
-        response = self.make_request(candidate.url)
-        offset = self.crawler.pager.store(response.content)
-        page = pagedb.Page.create(self.crawler.indexdb, candidate.url, datetime.now(timezone.utc), response.status_code, response.headers['Content-Type'],
-                                  offset, len(response.content))
-        page.insert(self.crawler.indexdb)
-        candidate.delete(self.crawler.indexdb)
-        self.crawler.indexdb.finish()
-        return page
+import downloader
 
 class Pager:
     def __init__(self, crawler):
@@ -134,11 +99,11 @@ class Extractor:
         return charset.split('=')[1].strip()
 
 class Crawler:
-    def __init__(self):
+    def __init__(self, policy):
         self.indexdb = None
         self.datafile = None
         self.headers = {}
-        self.downloader = Downloader(self)
+        self.downloader = downloader.Downloader(self, policy)
         self.pager = Pager(self)
         self.extractor = Extractor(self)
         self.matcher = matcher.Matcher()
@@ -173,6 +138,8 @@ class Crawler:
             pagelink.seqno = 0
             pagelink.refcount += 1
             pagelink.update(self.indexdb)
+        self.indexdb.finish()
+        return pagelink
 
     def download(self):
         return self.downloader.download()
@@ -188,12 +155,13 @@ class Crawler:
         return True
 
     @classmethod
-    def load(cls, filename):
+    def load(cls, filename, policy=downloader.Policy.single()):
         with open(filename) as fcrawler:
             ycrawler = yaml.load(fcrawler, Loader=yaml.Loader)
-            crawler = cls()
+            crawler = cls(policy)
             crawler.indexdb = Db(ycrawler['index'], pagedb.structure)
             crawler.datafile = ycrawler['data']
+            crawler.downloader.load(ycrawler)
             for jheader in ycrawler['request']['headers']:
                 crawler.headers[jheader['name'].lower()] = jheader['value']
             crawler.matcher.load(ycrawler['links'])
@@ -212,27 +180,23 @@ class Runner:
         self.stop()
 
     def loop(self, fcrawler):
-        with Crawler.load(fcrawler) as crawl:
+        with Crawler.load(fcrawler, policy=downloader.Policy.default()) as crawl:
             print('Press ENTER to stop')
             self.keeprunning = True
             while self.keeprunning:
-                page = crawl.download()
-                if page == None:
+                result = crawl.download()
+                if result == None:
                     print('Nothing left to download')
                     self.stop()
                 else:
-                    crawl.extract_links(page, True)
+                    if result.page != None:
+                        crawl.extract_links(result.page, True)
 
     def stop(self):
         self.keeprunning = False
 
 def load(fcrawler):
     return Crawler.load(fcrawler)
-
-def runner(fcrawler):
-    with crawler.load(args.crawler) as crawl:
-        print('Press ENTER to stop')
-        crawl.run()
 
 def run(fcrawler):
     Runner().run(fcrawler)
