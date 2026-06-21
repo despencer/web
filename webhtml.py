@@ -8,6 +8,7 @@ class AttrNode:
         self.parentNode = node
         self.nodeName = attr.name
         self.nodeValue = attr.value
+        self.childNodes = []
 
 class HtmlLink:
     ''' A link from HTML document to other resources. usage: value of Sec-Fetch-Dest, link: original link, url: reconstructed url '''
@@ -91,6 +92,33 @@ class HtmlPrettyPrinter:
 
     def print(self):
         self.printnode(0, self.doc)
+
+class HtmlStream:
+    def __init__(self, root):
+        self.root = root
+        self.nodes = [ self.root ]
+
+    def seek(self, pos):
+        if pos != 0:
+            raise Exception("Not implemented yet")
+        self.nodes = [ self.root ]
+
+    def read(self, nodecount):
+        result = []
+        if len(self.nodes) == 0:
+            return result
+        for i in range(nodecount):
+            result.append(self.readone())
+        return result
+
+    def readone(self):
+        result = self.nodes.pop(0)
+        if result.nodeType == xml.dom.Node.ELEMENT_NODE:
+            for a in result.attributes.values():
+                self.nodes.insert(0, AttrNode(result, a) )
+        for c in result.childNodes:
+            self.nodes.insert(0, c)
+        return result
 
 def prettyprint(doc, st):
     HtmlPrettyPrinter(doc,st).print()
