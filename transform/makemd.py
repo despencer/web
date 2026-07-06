@@ -6,7 +6,7 @@ import os
 sys.path.append(os.path.dirname(__file__) + '/..')
 import har
 import mdmaker
-import html5lib
+from bs4 import BeautifulSoup
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Extract html code')
@@ -18,7 +18,7 @@ if __name__ == '__main__':
     processed = False
     if 'content-type' in resp.headers:
         if resp.headers['content-type'].split(';')[0] == 'text/html':
-            document = html5lib.parse(resp.content, treebuilder='dom')
+            document = BeautifulSoup(resp.content, 'html.parser')
             with open(args.md, 'w', encoding='utf-8') as mdfile:
                 mdmaker.load(args.mdmaker).make(document, mdfile)
             processed = True
