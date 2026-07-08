@@ -2,19 +2,10 @@ import yaml
 import webhtml
 import sys
 import os
-sys.path.insert(1, os.path.expanduser('~/dev/datan'))
-import parser
+sys.path.append(os.path.expanduser('~/dev/datan'))
 from bs4 import Tag, NavigableString
-
-class MarkdownWriter:
-    def __init__(self, target):
-        self.target = target
-
-    def header(self, level, text):
-        self.target.write(f"{'#'*level} {text}\n\n")
-
-    def write(self, text):
-        self.target.write(text)
+import textdoc
+import mdwriter
 
 class HeaderLocator:
     def __init__(self):
@@ -25,7 +16,7 @@ class HeaderLocator:
         builder = ''
         for n in rootnode.find_all(self.node):
             builder += n.string
-        target.header(self.level, builder)
+        target.title = builder
 
     def load(self, yheader):
         if 'level' in yheader:
@@ -64,13 +55,11 @@ class NodeLocator:
 class BodyMaker:
     def __init__(self):
         self.start = NodeLocator()
-        self.makers = {'div': self.make_node, 'p':self.make_para}
-        self.paramakers = {'code': self.make_code}
         self.exclude = []
 
     def make(self, rootnode, target):
         for n in self.start.find(rootnode):
-            self.make_node(n, target)
+            self.make_node(n, target.add_section())
 
     def make_node(self, node, target):
         for ex in self.exclude:
@@ -81,40 +70,35 @@ class BodyMaker:
                                '$string': self.check_hanging }, target )
 
     def make_para(self, pnode, target):
-        self.make_para_contents(pnode, target)
-        target.write('\n\n')
+        self.make_para_contents(pnode, target.add_para())
 
     def make_para_contents(self, pnode, target):
-        self.walk_nodes(pnode, {'code': self.make_code, 'strong': self.make_bold, 'a': self.make_link,
+        self.walk_nodes(pnode, {'code': self.make_code, 'strong': self.make_strong, 'a': self.make_link,
                                 '$default':lambda x,y:print(f'Unknown node {x.name} in para node: {str(x)[:50]}'),
-                               '$string': lambda x,y: y.write(x.string.strip()) }, target )
+                               '$string': lambda x,y: y.add_string(x.string) }, target )
 
     def make_list(self, lnode, target):
         self.walk_nodes(lnode, {'li':self.make_list_item, '$default':lambda x,y:print(f'Unknown node {x.name} in list node'),
-                               '$string': self.check_hanging }, target )
-        target.write('\n')
+                               '$string': self.check_hanging }, target.add_list() )
 
     def make_list_item(self, linode, target):
-        target.write('- ')
-        self.make_para_contents(linode, target)
-        target.write('\n')
+        self.make_para_contents(linode, target.add_item())
 
-    def make_bold(self, pnode, target):
-        target.write(" **")
+    def make_strong(self, pnode, target):
+        target.add_run(textdoc.Style.Strong)
         self.make_para_contents(pnode, target)
-        target.write("** ")
+        target.add_run(textdoc.Style.Regular)
 
     def make_link(self, lnode, target):
-        target.write(" [")
         self.walk_nodes(lnode, {'$default':lambda x,y:print(f'Node {x.name} in xref node'),
-                               '$string': lambda x,y: y.write(x.string) }, target )
-        target.write(f"]({lnode['href']}) ")
+                               '$string': lambda x,y: y.add_string(x.string) }, target.add_link(lnode['href']) )
 
     def make_code(self, cnode, target):
-        target.write(" ```")
+        style = target.get_current_style()
+        target.add_run(textdoc.Style.Code)
         self.walk_nodes(cnode, {'$default':lambda x,y:print(f'Node {x.name} in code node'),
-                               '$string': lambda x,y: y.write(x.string) }, target )
-        target.write("``` ")
+                               '$string': lambda x,y: y.add_string(x.string) }, target )
+        target.add_run(style)
 
     def walk_nodes(self, anode, handlers, target):
         for c in anode.children:
@@ -144,10 +128,11 @@ class MarkdownMaker:
         self.bodies = []
 
     def make(self, rootnode, target):
-        mdwriter = MarkdownWriter(target)
-        self.header.extract(rootnode, mdwriter)
+        doc = textdoc.Document()
+        self.header.extract(rootnode, doc)
         for b in self.bodies:
-            b.make(rootnode, mdwriter)
+            b.make(rootnode, doc)
+        mdwriter.MarkdownWriter(target).write(doc)
 
     @classmethod
     def load(cls, yrules):
