@@ -6,10 +6,12 @@ class Document:
     def add_section(self):
         section = Section()
         self.body.append(section)
-        return section.content
+        return section
 
 class Section:
     def __init__(self):
+        self.header = None
+        self.level = 0
         self.content = Content()
 
 class Style:

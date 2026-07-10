@@ -10,6 +10,8 @@ class MarkdownWriter:
             self.write_section(b)
 
     def write_section(self, section):
+        if section.header != None and section.level > 0:
+            self.target.write(f"{'#'*section.level} {section.header}\n\n")
         content = section.content
         for item in content.items:
             if isinstance(item, textdoc.Para):

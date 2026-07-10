@@ -7,6 +7,51 @@ from bs4 import Tag, NavigableString
 import textdoc
 import mdwriter
 
+class DocumentBuilder:
+    def __init__(self, document):
+        self.document = document
+
+    def add_section(self):
+       return SectionBuilder(self, self.document.add_section())
+
+class SectionBuilder:
+    def __init__(self, docbuilder, section):
+        self.document = docbuilder
+        self.section = section
+
+    def add_section(self):
+       return self.document.add_section()
+
+    def add_header(self, level, header):
+        self.section.level = level
+        self.section.header = header
+
+    def add_para(self):
+        return ParaBuilder(self, self.section.content.add_para())
+
+    def add_list(self):
+        return ListBuilder(self, self.section.content.add_list())
+
+class ParaBuilder:
+    def __init__(self, section, para):
+        self.section = section
+        self.para = para
+
+    def add_link(self, href):
+        return LinkBuilder(self.para.add_link(href))
+
+class ListBuilder:
+    def __init__(self, section, alist):
+        self.section = section
+        self.alist = alist
+
+    def add_item(self):
+        return ParaBuilder(self, self.alist.add_item())
+
+class LinkBuilder:
+    def __init__(self, alink):
+        self.para = alink
+
 class HeaderLocator:
     def __init__(self):
         self.level = 1
@@ -58,47 +103,58 @@ class BodyMaker:
         self.exclude = []
 
     def make(self, rootnode, target):
+        builder = DocumentBuilder(target)
         for n in self.start.find(rootnode):
-            self.make_node(n, target.add_section())
+            self.make_node(n, builder.add_section())
 
     def make_node(self, node, target):
         for ex in self.exclude:
             if ex.match(node):
                 return
         self.walk_nodes(node, {'div': self.make_node, 'p':self.make_para, 'ul':self.make_list,
-                               '$default':lambda x,y:print(f'Unknown node {x.name} in node'),
+                               'section': self.make_section, 'code-block':self.make_para, 'h2': lambda x, y: y.add_header(2, ''.join(x.strings)),
+                               'h3': lambda x, y: y.add_header(3, ''.join(x.strings)),
+                               '$default':lambda x,y:print(f'Unknown node {x.name} in node: {str(x)[:70]}'),
                                '$string': self.check_hanging }, target )
+
+    def make_section(self, snode, sbuilder):
+        self.make_node(n, builder.add_section())
 
     def make_para(self, pnode, target):
         self.make_para_contents(pnode, target.add_para())
 
-    def make_para_contents(self, pnode, target):
+    def make_para_contents(self, pnode, pbuilder):
         self.walk_nodes(pnode, {'code': self.make_code, 'strong': self.make_strong, 'a': self.make_link,
-                                '$default':lambda x,y:print(f'Unknown node {x.name} in para node: {str(x)[:50]}'),
-                               '$string': lambda x,y: y.add_string(x.string) }, target )
+                                'mark': self.make_para_contents, 'span': self.make_para_contents, 'div': self.make_para_contents,
+                                'button': self.skip,
+                                '$default':lambda x,y:print(f'Unknown node {x.name} in para node: {str(x)[:70]}'),
+                               '$string': lambda x,y: y.para.add_string(x.string) }, pbuilder )
 
     def make_list(self, lnode, target):
         self.walk_nodes(lnode, {'li':self.make_list_item, '$default':lambda x,y:print(f'Unknown node {x.name} in list node'),
                                '$string': self.check_hanging }, target.add_list() )
 
-    def make_list_item(self, linode, target):
-        self.make_para_contents(linode, target.add_item())
+    def make_list_item(self, linode, lbuilder):
+        self.make_para_contents(linode, lbuilder.add_item())
 
-    def make_strong(self, pnode, target):
-        target.add_run(textdoc.Style.Strong)
-        self.make_para_contents(pnode, target)
-        target.add_run(textdoc.Style.Regular)
+    def make_strong(self, pnode, pbuilder):
+        pbuilder.para.add_run(textdoc.Style.Strong)
+        self.make_para_contents(pnode, pbuilder)
+        pbuilder.para.add_run(textdoc.Style.Regular)
 
-    def make_link(self, lnode, target):
+    def make_link(self, lnode, pbuilder):
         self.walk_nodes(lnode, {'$default':lambda x,y:print(f'Node {x.name} in xref node'),
-                               '$string': lambda x,y: y.add_string(x.string) }, target.add_link(lnode['href']) )
+                               '$string': lambda x,y: y.para.add_string(x.string) }, pbuilder.add_link(lnode['href']) )
 
-    def make_code(self, cnode, target):
-        style = target.get_current_style()
-        target.add_run(textdoc.Style.Code)
+    def make_code(self, cnode, pbuilder):
+        style = pbuilder.para.get_current_style()
+        pbuilder.para.add_run(textdoc.Style.Code)
         self.walk_nodes(cnode, {'$default':lambda x,y:print(f'Node {x.name} in code node'),
-                               '$string': lambda x,y: y.add_string(x.string) }, target )
-        target.add_run(style)
+                               '$string': lambda x,y: y.para.add_string(x.string) }, pbuilder )
+        pbuilder.para.add_run(style)
+
+    def make_section(self, snode, target):
+        self.make_node(snode, target.add_section())
 
     def walk_nodes(self, anode, handlers, target):
         for c in anode.children:
@@ -109,6 +165,9 @@ class BodyMaker:
                     handlers['$default'](c, target)
             if isinstance(c, NavigableString):
                 handlers['$string'](c, target)
+
+    def skip(self, node, target):
+        pass
 
     def check_hanging(self, snode, target):
         if snode.string.strip() != '':
