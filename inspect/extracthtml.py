@@ -5,8 +5,9 @@ import sys
 import os
 sys.path.append(os.path.dirname(__file__) + '/..')
 import har
-import html5lib
-from xml.etree import ElementTree
+#import html5lib
+#from xml.etree import ElementTree
+from bs4 import BeautifulSoup
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Extract html code')
@@ -17,10 +18,13 @@ if __name__ == '__main__':
     processed = False
     if 'content-type' in resp.headers:
         if resp.headers['content-type'].split(';')[0] == 'text/html':
-            document = html5lib.parse(resp.content)
-            ElementTree.indent(document)
+            document = BeautifulSoup(resp.content, 'html.parser')
             with open(args.html, 'w') as hfile:
-                hfile.write(ElementTree.tostring(document, encoding='unicode'))
+                hfile.write(document.prettify())
+#            document = html5lib.parse(resp.content, treebuilder='dom')
+#            ElementTree.indent(document)
+#            with open(args.html, 'w') as hfile:
+#                hfile.write(ElementTree.tostring(document, encoding='unicode'))
             processed = True
     if not processed:
         with open(args.html, 'w') as hfile:
