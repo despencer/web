@@ -109,6 +109,7 @@ class BodyMaker:
 
     def make_node(self, node, target):
         self.walk_nodes(node, {'div': self.make_node, 'p':self.make_para, 'ul':self.make_list,
+                               'blockquote': self.make_block_quote,
                                'section': self.make_section, 'code-block':self.make_para, 'h2': lambda x, y: y.add_header(2, ''.join(x.strings)),
                                'h3': lambda x, y: y.add_header(3, ''.join(x.strings)),
                                '$default':lambda x,y:print(f'Unknown node {x.name} in node: {str(x)[:90]}'),
@@ -120,10 +121,16 @@ class BodyMaker:
     def make_para(self, pnode, target):
         self.make_para_contents(pnode, target.add_para())
 
+    def make_block_quote(self, pnode, target):
+        pbuilder = target.add_para()
+        pbuilder.para.style = textdoc.Style.BlockQuote
+        self.make_para_contents(pnode, pbuilder)
+
     def make_para_contents(self, pnode, pbuilder):
-        self.walk_nodes(pnode, {'code': self.make_code, 'strong': self.make_strong, 'a': self.make_link,
+        self.walk_nodes(pnode, {'code': self.make_code, 'strong': self.make_strong, 'em': self.make_emphasis,
+                                'a': self.make_link,
                                 'mark': self.make_para_contents, 'span': self.make_para_contents, 'div': self.make_para_contents,
-                                'pre': self.make_para_contents, 'button': self.skip, 
+                                'pre': self.make_para_contents, 'p': self.make_para_contents, 'button': self.skip, 
                                 '$default':lambda x,y:print(f'Unknown node {x.name} in para node: {str(x)[:70]}'),
                                '$string': lambda x,y: y.para.add_string(x.string) }, pbuilder )
 
@@ -136,6 +143,11 @@ class BodyMaker:
 
     def make_strong(self, pnode, pbuilder):
         pbuilder.para.add_run(textdoc.Style.Strong)
+        self.make_para_contents(pnode, pbuilder)
+        pbuilder.para.add_run(textdoc.Style.Regular)
+
+    def make_emphasis(self, pnode, pbuilder):
+        pbuilder.para.add_run(textdoc.Style.Emphasis)
         self.make_para_contents(pnode, pbuilder)
         pbuilder.para.add_run(textdoc.Style.Regular)
 

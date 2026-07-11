@@ -35,6 +35,7 @@ class Content:
 class Para:
     def __init__(self):
         self.runs = [ Run() ]
+        self.style = Style.Regular
 
     def get_current_style(self):
         return self.runs[-1].style
@@ -82,5 +83,7 @@ class List:
 class Style:
     Regular = 0
     Strong = 1
+    Emphasis = 2
     Code = 0x10
     Link = 0x20
+    BlockQuote = 0x100

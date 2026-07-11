@@ -20,6 +20,8 @@ class MarkdownWriter:
                 self.write_list(item)
 
     def write_para(self, para):
+        if para.style == textdoc.Style.BlockQuote:
+            self.target.write('>')
         self.write_runs(para.runs)
         self.target.write('\n\n')
 
@@ -33,6 +35,8 @@ class MarkdownWriter:
     def write_run(self, run):
         if run.style == textdoc.Style.Strong:
             self.target.write(f'**{run.text}**')
+        elif run.style == textdoc.Style.Emphasis:
+            self.target.write(f'*{run.text}*')
         elif run.style == textdoc.Style.Code:
             self.target.write(f'```{run.text}```')
         else:
