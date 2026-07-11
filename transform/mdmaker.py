@@ -111,7 +111,7 @@ class BodyMaker:
         self.walk_nodes(node, {'div': self.make_node, 'p':self.make_para, 'ul':self.make_list,
                                'section': self.make_section, 'code-block':self.make_para, 'h2': lambda x, y: y.add_header(2, ''.join(x.strings)),
                                'h3': lambda x, y: y.add_header(3, ''.join(x.strings)),
-                               '$default':lambda x,y:print(f'Unknown node {x.name} in node: {str(x)[:70]}'),
+                               '$default':lambda x,y:print(f'Unknown node {x.name} in node: {str(x)[:90]}'),
                                '$string': self.check_hanging }, target )
 
     def make_section(self, snode, sbuilder):
@@ -123,7 +123,7 @@ class BodyMaker:
     def make_para_contents(self, pnode, pbuilder):
         self.walk_nodes(pnode, {'code': self.make_code, 'strong': self.make_strong, 'a': self.make_link,
                                 'mark': self.make_para_contents, 'span': self.make_para_contents, 'div': self.make_para_contents,
-                                'button': self.skip,
+                                'pre': self.make_para_contents, 'button': self.skip, 
                                 '$default':lambda x,y:print(f'Unknown node {x.name} in para node: {str(x)[:70]}'),
                                '$string': lambda x,y: y.para.add_string(x.string) }, pbuilder )
 
@@ -147,23 +147,29 @@ class BodyMaker:
     def make_code(self, cnode, pbuilder):
         style = pbuilder.para.get_current_style()
         pbuilder.para.add_run(textdoc.Style.Code)
-        self.walk_nodes(cnode, {'$default':lambda x,y:print(f'Node {x.name} in code node'),
-                               '$string': lambda x,y: y.para.add_string(x.string) }, pbuilder )
+        self.make_code_contents(cnode, pbuilder)
         pbuilder.para.add_run(style)
+
+    def make_code_contents(self, cnode, cbuilder):
+        self.walk_nodes(cnode, {'span': self.make_code_contents,
+                                '$default':lambda x,y:print(f'Node {x.name} in code node: {str(x)[:70]}'),
+                               '$string': lambda x,y: y.para.add_string(x.string) }, cbuilder )
 
     def make_section(self, snode, target):
         self.make_node(snode, target.add_section())
 
     def walk_nodes(self, anode, handlers, target):
-        for ex in self.exclude:
-            if ex.match(anode):
-                return
         for c in anode.children:
             if isinstance(c, Tag):
-                if c.name in handlers:
-                    handlers[c.name](c, target)
-                else:
-                    handlers['$default'](c, target)
+                skip = False
+                for ex in self.exclude:
+                    if ex.match(c):
+                        skip = True
+                if not skip:
+                    if c.name in handlers:
+                        handlers[c.name](c, target)
+                    else:
+                        handlers['$default'](c, target)
             if isinstance(c, NavigableString):
                 handlers['$string'](c, target)
 
