@@ -8,8 +8,9 @@ import textdoc
 import mdwriter
 
 class DocumentBuilder:
-    def __init__(self, document):
+    def __init__(self, document, harstorage):
         self.document = document
+        self.harstorage = harstorage
 
     def add_section(self):
        return SectionBuilder(self, self.document.add_section())
@@ -102,15 +103,11 @@ class BodyMaker:
         self.start = NodeLocator()
         self.exclude = []
 
-    def make(self, rootnode, target):
-        builder = DocumentBuilder(target)
+    def make(self, rootnode, builder):
         for n in self.start.find(rootnode):
             self.make_node(n, builder.add_section())
 
     def make_node(self, node, target):
-        for ex in self.exclude:
-            if ex.match(node):
-                return
         self.walk_nodes(node, {'div': self.make_node, 'p':self.make_para, 'ul':self.make_list,
                                'section': self.make_section, 'code-block':self.make_para, 'h2': lambda x, y: y.add_header(2, ''.join(x.strings)),
                                'h3': lambda x, y: y.add_header(3, ''.join(x.strings)),
@@ -143,7 +140,8 @@ class BodyMaker:
         pbuilder.para.add_run(textdoc.Style.Regular)
 
     def make_link(self, lnode, pbuilder):
-        self.walk_nodes(lnode, {'$default':lambda x,y:print(f'Node {x.name} in xref node'),
+        self.walk_nodes(lnode, {'code': lambda x,y: y.para.add_string(''.join(x.strings)),
+                               '$default':lambda x,y:print(f'Node {x.name} in xref node: {str(x)[:70]}'),
                                '$string': lambda x,y: y.para.add_string(x.string) }, pbuilder.add_link(lnode['href']) )
 
     def make_code(self, cnode, pbuilder):
@@ -157,6 +155,9 @@ class BodyMaker:
         self.make_node(snode, target.add_section())
 
     def walk_nodes(self, anode, handlers, target):
+        for ex in self.exclude:
+            if ex.match(anode):
+                return
         for c in anode.children:
             if isinstance(c, Tag):
                 if c.name in handlers:
@@ -186,11 +187,12 @@ class MarkdownMaker:
         self.header = HeaderLocator()
         self.bodies = []
 
-    def make(self, rootnode, target):
+    def make(self, rootnode, harstorage, target):
         doc = textdoc.Document()
         self.header.extract(rootnode, doc)
+        builder = DocumentBuilder(doc, harstorage)
         for b in self.bodies:
-            b.make(rootnode, doc)
+            b.make(rootnode, builder)
         mdwriter.MarkdownWriter(target).write(doc)
 
     @classmethod

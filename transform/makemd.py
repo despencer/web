@@ -21,7 +21,7 @@ if __name__ == '__main__':
         if resp.headers['content-type'].split(';')[0] == 'text/html':
             document = BeautifulSoup(resp.content, 'html.parser')
             with open(args.md, 'w', encoding='utf-8') as mdfile:
-                mdmaker.load(args.mdmaker).make(document, mdfile)
+                mdmaker.load(args.mdmaker).make(document, resp, mdfile)
             processed = True
     if not processed:
         print('HTML not found')
