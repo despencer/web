@@ -27,8 +27,9 @@ class Content:
         self.items.append(para)
         return para
 
-    def add_list(self):
+    def add_list(self, listtype):
         alist = List()
+        alist.listtype = listtype
         self.items.append(alist)
         return alist
 
@@ -73,6 +74,7 @@ class Link:
 
 class List:
     def __init__(self):
+        self.listtype = '-'
         self.items = []
 
     def add_item(self):

@@ -30,8 +30,8 @@ class SectionBuilder:
     def add_para(self):
         return ParaBuilder(self, self.section.content.add_para())
 
-    def add_list(self):
-        return ListBuilder(self, self.section.content.add_list())
+    def add_list(self,listtype):
+        return ListBuilder(self, self.section.content.add_list(listtype))
 
 class ParaBuilder:
     def __init__(self, section, para):
@@ -108,7 +108,7 @@ class BodyMaker:
             self.make_node(n, builder.add_section())
 
     def make_node(self, node, target):
-        self.walk_nodes(node, {'div': self.make_node, 'p':self.make_para, 'ul':self.make_list,
+        self.walk_nodes(node, {'div': self.make_node, 'p':self.make_para, 'ul': self.make_list,  'ol': self.make_list,
                                'blockquote': self.make_block_quote,
                                'section': self.make_section, 'code-block':self.make_para, 'h2': lambda x, y: y.add_header(2, ''.join(x.strings)),
                                'h3': lambda x, y: y.add_header(3, ''.join(x.strings)),
@@ -134,9 +134,9 @@ class BodyMaker:
                                 '$default':lambda x,y:print(f'Unknown node {x.name} in para node: {str(x)[:70]}'),
                                '$string': lambda x,y: y.para.add_string(x.string) }, pbuilder )
 
-    def make_list(self, lnode, target):
+    def make_list(self, lnode, nbuilder):
         self.walk_nodes(lnode, {'li':self.make_list_item, '$default':lambda x,y:print(f'Unknown node {x.name} in list node'),
-                               '$string': self.check_hanging }, target.add_list() )
+                               '$string': self.check_hanging }, nbuilder.add_list( {'ul':'-', 'ol':1}[lnode.name] ) )
 
     def make_list_item(self, linode, lbuilder):
         self.make_para_contents(linode, lbuilder.add_item())

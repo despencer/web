@@ -38,7 +38,10 @@ class MarkdownWriter:
         elif run.style == textdoc.Style.Emphasis:
             self.target.write(f'*{run.text}*')
         elif run.style == textdoc.Style.Code:
-            self.target.write(f'```{run.text}```')
+            if '\n' in run.text:
+                self.target.write(f'```\n{run.text}\n```')
+            else:
+                self.target.write(f'```{run.text}```')
         else:
             self.target.write(run.text)
 
@@ -48,6 +51,12 @@ class MarkdownWriter:
         self.target.write(f']({link.href})')
 
     def write_list(self, alist):
+        itemno = alist.listtype
         for item in alist.items:
-            self.target.write('- ')
+            if isinstance(itemno, int):
+                prefix = f'{itemno}. '
+                itemno += 1
+            else:
+                prefix = itemno + ' '
+            self.target.write(prefix)
             self.write_para(item)
