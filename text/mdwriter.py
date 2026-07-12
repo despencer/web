@@ -18,6 +18,8 @@ class MarkdownWriter:
                 self.write_para(item)
             if isinstance(item, textdoc.List):
                 self.write_list(item)
+            if isinstance(item, textdoc.Table):
+                self.write_table(item)
 
     def write_para(self, para):
         if para.style == textdoc.Style.BlockQuote:
@@ -60,3 +62,20 @@ class MarkdownWriter:
                 prefix = itemno + ' '
             self.target.write(prefix)
             self.write_para(item)
+
+    def write_table(self, table):
+        self.write_table_row(table.header)
+        self.target.write('|')
+        for c in table.header.cells:
+            self.target.write('----|')
+        self.target.write('\n')
+        for r in table.rows:
+            self.write_table_row(r)
+        self.target.write('\n')
+
+    def write_table_row(self, row):
+        self.target.write('|')
+        for c in row.cells:
+            self.write_runs(c.runs)
+            self.target.write('|')
+        self.target.write('\n')

@@ -33,6 +33,9 @@ class SectionBuilder:
     def add_list(self,listtype):
         return ListBuilder(self, self.section.content.add_list(listtype))
 
+    def add_table(self):
+        return TableBuilder(self, self.section.content.add_table())
+
 class ParaBuilder:
     def __init__(self, section, para):
         self.section = section
@@ -52,6 +55,38 @@ class ListBuilder:
 class LinkBuilder:
     def __init__(self, alink):
         self.para = alink
+
+class TableBuilder:
+    def __init__(self, section, atable):
+        self.section = section
+        self.table = atable
+
+    def get_header(self):
+        if self.table.header.size() > 0:
+            print('Table header repeats, overwritten')
+        return TableRowBuilder(self, self.table.header)
+
+    def add_row(self):
+        return TableRowBuilder(self, self.table.add_row())
+
+class TableRowBuilder:
+    def __init__(self, table, row):
+        self.table = table
+        self.row = row
+
+    def check_header(self):
+        return (self.row == self.table.table.header)
+
+    def check_body(self):
+        return not self.check_header()
+
+    def add_cell(self):
+        return TableCellBuilder(self, self.row.add_cell())
+
+class TableCellBuilder:
+    def __init__(self, row, cell):
+        self.row = row
+        self.para = cell
 
 class HeaderLocator:
     def __init__(self):
@@ -109,7 +144,7 @@ class BodyMaker:
 
     def make_node(self, node, target):
         self.walk_nodes(node, {'div': self.make_node, 'p':self.make_para, 'ul': self.make_list,  'ol': self.make_list,
-                               'blockquote': self.make_block_quote,
+                               'blockquote': self.make_block_quote, 'table': self.make_table,
                                'section': self.make_section, 'code-block':self.make_para, 'h2': lambda x, y: y.add_header(2, ''.join(x.strings)),
                                'h3': lambda x, y: y.add_header(3, ''.join(x.strings)),
                                '$default':lambda x,y:print(f'Unknown node {x.name} in node: {str(x)[:90]}'),
@@ -169,6 +204,32 @@ class BodyMaker:
 
     def make_section(self, snode, target):
         self.make_node(snode, target.add_section())
+
+    def make_table(self, tnode, builder):
+        self.walk_nodes(tnode, {'thead': self.make_table_contents, 'tbody': self.make_table_contents,
+                                '$default':lambda x,y:print(f'Node {x.name} in table node: {str(x)[:70]}'),
+                               '$string': self.check_hanging }, builder.add_table() )
+
+    def make_table_contents(self, tnode, tbuilder):
+        self.walk_nodes(tnode, {'tr': self.make_table_row,
+                                '$default':lambda x,y:print(f'Node {x.name} in table: {str(x)[:70]}'),
+                               '$string': self.check_hanging }, tbuilder )
+
+    def make_table_row(self, trow, tbuilder):
+        if trow.parent.name == 'thead':
+            rbuilder = tbuilder.get_header()
+        else:
+            rbuilder = tbuilder.add_row()
+        self.walk_nodes(trow, {'th': self.make_table_cell, 'td': self.make_table_cell,
+                                '$default':lambda x,y:print(f'Node {x.name} in table body: {str(x)[:70]}'),
+                               '$string': self.check_hanging }, rbuilder )
+
+    def make_table_cell(self, tcell, rbuilder):
+        if tcell.name == 'th':
+            rbuilder.check_header()
+        else:
+            rbuilder.check_body()
+        self.make_para_contents(tcell, rbuilder.add_cell())
 
     def walk_nodes(self, anode, handlers, target):
         for c in anode.children:

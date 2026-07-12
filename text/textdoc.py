@@ -33,6 +33,11 @@ class Content:
         self.items.append(alist)
         return alist
 
+    def add_table(self):
+        table = Table()
+        self.items.append(table)
+        return table
+
 class Para:
     def __init__(self):
         self.runs = [ Run() ]
@@ -80,6 +85,28 @@ class List:
     def add_item(self):
         para = Para()
         self.items.append(para)
+        return para
+
+class Table:
+    def __init__(self):
+        self.header = Row()
+        self.rows = []
+
+    def add_row(self):
+        row = Row()
+        self.rows.append(row)
+        return row
+
+class Row:
+    def __init__(self):
+        self.cells = []
+
+    def size(self):
+        return len(self.cells)
+
+    def add_cell(self):
+        para = Para()
+        self.cells.append(para)
         return para
 
 class Style:
