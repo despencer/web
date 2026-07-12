@@ -41,7 +41,7 @@ class MarkdownWriter:
             self.target.write(f'*{run.text}*')
         elif run.style == textdoc.Style.Code:
             if '\n' in run.text:
-                self.target.write(f'```\n{run.text}\n```')
+                self.target.write(f'```{run.language}\n{run.text}\n```')
             else:
                 self.target.write(f'```{run.text}```')
         else:

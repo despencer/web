@@ -137,6 +137,7 @@ class BodyMaker:
     def __init__(self):
         self.start = NodeLocator()
         self.exclude = []
+        self.code = ''
 
     def make(self, rootnode, builder):
         for n in self.start.find(rootnode):
@@ -194,6 +195,7 @@ class BodyMaker:
     def make_code(self, cnode, pbuilder):
         style = pbuilder.para.get_current_style()
         pbuilder.para.add_run(textdoc.Style.Code)
+        pbuilder.para.last_run().language = self.code
         self.make_code_contents(cnode, pbuilder)
         pbuilder.para.add_run(style)
 
@@ -260,6 +262,8 @@ class BodyMaker:
                 ex = NodeLocator()
                 ex.load(yex)
                 self.exclude.append(ex)
+        if 'code' in ybody:
+            self.code = ybody['code']
 
 class MarkdownMaker:
     def __init__(self):

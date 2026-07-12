@@ -46,6 +46,9 @@ class Para:
     def get_current_style(self):
         return self.runs[-1].style
 
+    def last_run(self):
+        return self.runs[-1]
+
     def add_run(self, style):
         arun = Run()
         arun.style = style
@@ -67,6 +70,7 @@ class Run:
     def __init__(self):
         self.style = Style.Regular
         self.text = ''
+        self.language = ''
 
 class Link:
     def __init__(self):
