@@ -1,8 +1,10 @@
 import textdoc
 
 class MarkdownWriter:
-    def __init__(self, target):
+    def __init__(self, filename, target):
+        self.filename = filename
         self.target = target
+        self.imagecount = 0
 
     def write(self, document):
         self.target.write(f'# {document.title}\n\n')
@@ -20,6 +22,8 @@ class MarkdownWriter:
                 self.write_list(item)
             if isinstance(item, textdoc.Table):
                 self.write_table(item)
+            if isinstance(item, textdoc.Image):
+                self.write_image(item)
 
     def write_para(self, para):
         if para.style == textdoc.Style.BlockQuote:
@@ -79,3 +83,10 @@ class MarkdownWriter:
             self.write_runs(c.runs)
             self.target.write('|')
         self.target.write('\n')
+
+    def write_image(self, image):
+        self.imagecount += 1
+        imageref = f'{self.filename}-{self.imagecount}.{image.format}'
+        with open(imageref, 'wb') as f:
+            f.write(image.data)
+        self.target.write(f'![]({imageref})\n\n')

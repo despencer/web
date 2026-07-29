@@ -15,13 +15,14 @@ if __name__ == '__main__':
     parser.add_argument('mdmaker', help='Markdown maker definition')
     parser.add_argument('md', help='Target md-file')
     args = parser.parse_args()
-    resp = har.loadresponse(args.response)
+    container = har.load(args.response)
+    resp = container.response
     processed = False
     if 'content-type' in resp.headers:
-        if resp.headers['content-type'].split(';')[0] == 'text/html':
+        if resp.content_type() == 'text/html':
             document = BeautifulSoup(resp.content, 'html.parser')
             with open(args.md, 'w', encoding='utf-8') as mdfile:
-                mdmaker.load(args.mdmaker).make(document, resp, mdfile)
+                mdmaker.load(args.mdmaker).make(document, container, os.path.splitext(args.md)[0], mdfile)
             processed = True
     if not processed:
         print('HTML not found')

@@ -20,6 +20,9 @@ class SectionBuilder:
         self.document = docbuilder
         self.section = section
 
+    def storage(self):
+        return self.document.harstorage
+
     def add_section(self):
        return self.document.add_section()
 
@@ -35,6 +38,9 @@ class SectionBuilder:
 
     def add_table(self):
         return TableBuilder(self, self.section.content.add_table())
+
+    def add_image(self, filetype, data):
+        self.section.content.add_image(filetype, data)
 
 class ParaBuilder:
     def __init__(self, section, para):
@@ -145,7 +151,8 @@ class BodyMaker:
 
     def make_node(self, node, target):
         self.walk_nodes(node, {'div': self.make_node, 'p':self.make_para, 'ul': self.make_list,  'ol': self.make_list,
-                               'blockquote': self.make_block_quote, 'table': self.make_table,
+                               'blockquote': self.make_block_quote, 'table': self.make_table, 'figure': self.make_node,
+                               'img': self.make_image,
                                'section': self.make_section, 'code-block':self.make_para, 'h2': lambda x, y: y.add_header(2, ''.join(x.strings)),
                                'h3': lambda x, y: y.add_header(3, ''.join(x.strings)),
                                '$default':lambda x,y:print(f'Unknown node {x.name} in node: {str(x)[:90]}'),
@@ -233,6 +240,16 @@ class BodyMaker:
             rbuilder.check_body()
         self.make_para_contents(tcell, rbuilder.add_cell())
 
+    def make_image(self, inode, builder):
+        if 'src' not in inode.attrs:
+            print(f'No source attribute in image, {str(inode)[:90]}')
+            return
+        image = builder.storage().get_response_byurl(inode['src'])
+        if image == None:
+            print(f'No image in har storage for {inode['src']}')
+            return
+        builder.add_image(image.content_type().split('/')[1], image.content)
+
     def walk_nodes(self, anode, handlers, target):
         for c in anode.children:
             if isinstance(c, Tag):
@@ -270,13 +287,13 @@ class MarkdownMaker:
         self.header = HeaderLocator()
         self.bodies = []
 
-    def make(self, rootnode, harstorage, target):
+    def make(self, rootnode, harstorage, filename, target):
         doc = textdoc.Document()
         self.header.extract(rootnode, doc)
         builder = DocumentBuilder(doc, harstorage)
         for b in self.bodies:
             b.make(rootnode, builder)
-        mdwriter.MarkdownWriter(target).write(doc)
+        mdwriter.MarkdownWriter(filename, target).write(doc)
 
     @classmethod
     def load(cls, yrules):

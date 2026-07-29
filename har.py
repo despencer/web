@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 import json
 import xml.dom
 import urllib
+import base64
 import webhttp
 import webhtml
 import webscript
@@ -73,6 +74,8 @@ def loadhttpresponse(jresp):
     resp.status = jresp['status']
     if 'content' in jresp and 'text' in jresp['content']:
         resp.content = jresp['content']['text']
+        if 'encoding' in jresp['content']:
+            resp.content = base64.b64decode(resp.content)
     resp.headers = loadhttpheaders(jresp['headers'])
     resp.cookies = loadhttpcookies(jresp['cookies'])
     return resp
@@ -107,6 +110,8 @@ def load(harfile):
             load.request = loadhttprequest(jentry['request'])
             load.response = loadhttpresponse(jentry['response'])
             session.entries.append(load)
+            if session.response == None:
+                session.response = load.response
         return session
 
 class Imitator:

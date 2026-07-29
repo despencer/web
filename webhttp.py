@@ -52,9 +52,20 @@ class HttpResponse:
             ck.expires = datetime(1970,1,1,tzinfo=timezone.utc)+timedelta(seconds=c.expires) if c.expires != None else None
             self.cookies.append(ck)
 
+    def content_type(self):
+        if 'content-type' in self.headers:
+            return self.headers['content-type'].split(';')[0]
+
 class HttpSession:
     def __init__(self):
         self.entries = []
+        self.response = None
+
+    def get_response_byurl(self, url):
+        for e in self.entries:
+            if e.request.url == url:
+                return e.response
+        return None
 
 class HttpLoad:
     def __init__(self):

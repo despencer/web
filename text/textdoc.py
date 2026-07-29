@@ -38,6 +38,11 @@ class Content:
         self.items.append(table)
         return table
 
+    def add_image(self, format, data):
+        image = Image(format, data)
+        self.items.append(image)
+        return image
+
 class Para:
     def __init__(self):
         self.runs = [ Run() ]
@@ -90,6 +95,11 @@ class List:
         para = Para()
         self.items.append(para)
         return para
+
+class Image:
+    def __init__(self, format, data):
+        self.format = format
+        self.data = data
 
 class Table:
     def __init__(self):
