@@ -96,6 +96,12 @@ class List:
         self.items.append(para)
         return para
 
+    def add_list(self, listtype):
+        alist = List()
+        alist.listtype = listtype
+        self.items.append(alist)
+        return alist
+
 class Image:
     def __init__(self, format, data):
         self.format = format

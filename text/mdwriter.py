@@ -5,6 +5,7 @@ class MarkdownWriter:
         self.filename = filename
         self.target = target
         self.imagecount = 0
+        self.listindent = 0
 
     def write(self, document):
         self.target.write(f'# {document.title}\n\n')
@@ -31,6 +32,16 @@ class MarkdownWriter:
         self.write_runs(para.runs)
         self.target.write('\n\n')
 
+    def isempty(self, runs):
+        for run in runs:
+            if isinstance(run, textdoc.Run):
+                if len(run.text.strip()) > 0:
+                    return False
+            if isinstance(run, textdoc.Link):
+                if not self.isempty(run.runs):
+                    return False
+        return True
+
     def write_runs(self, runs):
         for run in runs:
             if isinstance(run, textdoc.Run):
@@ -52,20 +63,27 @@ class MarkdownWriter:
             self.target.write(run.text)
 
     def write_link(self, link):
-        self.target.write('[')
-        self.write_runs(link.runs)
-        self.target.write(f']({link.href})')
+        if not self.isempty(link.runs):
+            self.target.write('[')
+            self.write_runs(link.runs)
+            self.target.write(f']({link.href})')
 
     def write_list(self, alist):
         itemno = alist.listtype
         for item in alist.items:
-            if isinstance(itemno, int):
-                prefix = f'{itemno}. '
-                itemno += 1
+            if isinstance(item, textdoc.List):
+                self.listindent += 4
+                self.write_list(item)
+                self.listindent -= 4
             else:
-                prefix = itemno + ' '
-            self.target.write(prefix)
-            self.write_para(item)
+                if isinstance(itemno, int):
+                    prefix = f'{itemno}. '
+                    itemno += 1
+                else:
+                    prefix = itemno + ' '
+                prefix = (' '*self.listindent) + prefix
+                self.target.write(prefix)
+                self.write_para(item)
 
     def write_table(self, table):
         self.write_table_row(table.header)

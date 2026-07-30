@@ -3,7 +3,7 @@ import webhtml
 import sys
 import os
 sys.path.append(os.path.expanduser('~/dev/datan'))
-from bs4 import Tag, NavigableString
+from bs4 import Tag, NavigableString, Comment
 import textdoc
 import mdwriter
 
@@ -42,6 +42,9 @@ class SectionBuilder:
     def add_image(self, filetype, data):
         self.section.content.add_image(filetype, data)
 
+    def add_link(self, href):
+        return ParaBuilder(self, self.section.content.add_para()).add_link(href)
+
 class ParaBuilder:
     def __init__(self, section, para):
         self.section = section
@@ -57,6 +60,9 @@ class ListBuilder:
 
     def add_item(self):
         return ParaBuilder(self, self.alist.add_item())
+
+    def add_list(self, listtype):
+        return ListBuilder(self, self.alist.add_list(listtype))
 
 class LinkBuilder:
     def __init__(self, alink):
@@ -139,10 +145,23 @@ class NodeLocator:
         if 'attrs' in ynode:
             self.attrs = ynode['attrs']
 
+class NodeReplacer:
+    def __init__(self):
+        self.source = NodeLocator()
+        self.target = 'p'
+
+    def match(self, node):
+        return self.source.match(node)
+
+    def load(self, ynode):
+        self.source.load(ynode['source'])
+        self.target = ynode['target']['node']
+
 class BodyMaker:
     def __init__(self):
         self.start = NodeLocator()
         self.exclude = []
+        self.replace = []
         self.code = ''
 
     def make(self, rootnode, builder):
@@ -152,7 +171,8 @@ class BodyMaker:
     def make_node(self, node, target):
         self.walk_nodes(node, {'div': self.make_node, 'p':self.make_para, 'ul': self.make_list,  'ol': self.make_list,
                                'blockquote': self.make_block_quote, 'table': self.make_table, 'figure': self.make_node,
-                               'img': self.make_image,
+                               'img': self.make_image, 'header': self.make_node, 'button': self.skip, 'article': self.make_node,
+                               'a': self.make_link, 'span': self.make_node,
                                'section': self.make_section, 'code-block':self.make_para, 'h2': lambda x, y: y.add_header(2, ''.join(x.strings)),
                                'h3': lambda x, y: y.add_header(3, ''.join(x.strings)),
                                '$default':lambda x,y:print(f'Unknown node {x.name} in node: {str(x)[:90]}'),
@@ -178,8 +198,15 @@ class BodyMaker:
                                '$string': lambda x,y: y.para.add_string(x.string) }, pbuilder )
 
     def make_list(self, lnode, nbuilder):
-        self.walk_nodes(lnode, {'li':self.make_list_item, '$default':lambda x,y:print(f'Unknown node {x.name} in list node'),
-                               '$string': self.check_hanging }, nbuilder.add_list( {'ul':'-', 'ol':1}[lnode.name] ) )
+        listtype = '-'
+        if lnode.name == 'ol':
+            listtype = 1
+        self.make_list_contents(lnode, nbuilder.add_list( listtype ))
+
+    def make_list_contents(self, lnode, lbuilder):
+        self.walk_nodes(lnode, {'li':self.make_list_item, 'section':self.make_list_contents, 'ul':self.make_list,
+                                '$default':lambda x,y:print(f'Unknown node {x.name} in list node: {str(x)[:70]}'),
+                               '$string': self.check_hanging }, lbuilder )
 
     def make_list_item(self, linode, lbuilder):
         self.make_para_contents(linode, lbuilder.add_item())
@@ -195,9 +222,12 @@ class BodyMaker:
         pbuilder.para.add_run(textdoc.Style.Regular)
 
     def make_link(self, lnode, pbuilder):
+        href = ''
+        if 'href' in lnode.attrs:
+            href = lnode['href']
         self.walk_nodes(lnode, {'code': lambda x,y: y.para.add_string(''.join(x.strings)),
                                '$default':lambda x,y:print(f'Node {x.name} in xref node: {str(x)[:70]}'),
-                               '$string': lambda x,y: y.para.add_string(x.string) }, pbuilder.add_link(lnode['href']) )
+                               '$string': lambda x,y: y.para.add_string(x.string) }, pbuilder.add_link(href) )
 
     def make_code(self, cnode, pbuilder):
         style = pbuilder.para.get_current_style()
@@ -253,16 +283,20 @@ class BodyMaker:
     def walk_nodes(self, anode, handlers, target):
         for c in anode.children:
             if isinstance(c, Tag):
-                skip = False
+                done = False
                 for ex in self.exclude:
                     if ex.match(c):
-                        skip = True
-                if not skip:
-                    if c.name in handlers:
-                        handlers[c.name](c, target)
+                        done = True
+                if not done:
+                    name = c.name
+                    for repl in self.replace:
+                        if repl.match(c):
+                            name = repl.target
+                    if name in handlers:
+                        handlers[name](c, target)
                     else:
                         handlers['$default'](c, target)
-            if isinstance(c, NavigableString):
+            if type(c) is NavigableString:
                 handlers['$string'](c, target)
 
     def skip(self, node, target):
@@ -279,6 +313,11 @@ class BodyMaker:
                 ex = NodeLocator()
                 ex.load(yex)
                 self.exclude.append(ex)
+        if 'replace' in ybody:
+            for yrepl in ybody['replace']:
+                repl = NodeReplacer()
+                repl.load(yrepl)
+                self.replace.append(repl)
         if 'code' in ybody:
             self.code = ybody['code']
 
