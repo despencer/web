@@ -49,12 +49,16 @@ class MarkdownWriter:
                 self.write_run(run)
             if isinstance(run, textdoc.Link):
                 self.write_link(run)
+            if isinstance(run, textdoc.Image):
+                self.write_image(run)
 
     def write_run(self, run):
         if run.style == textdoc.Style.Strong:
             self.target.write(f'**{run.text}**')
         elif run.style == textdoc.Style.Emphasis:
             self.target.write(f'*{run.text}*')
+        elif run.style == textdoc.Style.StrikeThrough:
+            self.target.write(f'~~{run.text}~~')
         elif run.style == textdoc.Style.Code:
             if '\n' in run.text:
                 self.target.write(f'\n```{run.language}\n{run.text}\n```')

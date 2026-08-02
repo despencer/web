@@ -65,11 +65,18 @@ class Para:
     def add_link(self, href):
         alink = Link()
         alink.href = href
+        return self.add_item(alink)
+
+    def add_image(self, format, data):
+        image = Image(format, data)
+        return self.add_item(image)
+
+    def add_item(self, item):
         nextrun = Run()
         nextrun.style = self.runs[-1].style
-        self.runs.append(alink)
+        self.runs.append(item)
         self.runs.append(nextrun)
-        return alink
+        return item
 
 class Run:
     def __init__(self):
@@ -133,6 +140,7 @@ class Style:
     Regular = 0
     Strong = 1
     Emphasis = 2
+    StrikeThrough = 4
     Code = 0x10
     Link = 0x20
     BlockQuote = 0x100

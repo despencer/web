@@ -31,7 +31,7 @@ class SectionBuilder:
         self.section.header = header
 
     def add_para(self):
-        return ParaBuilder(self, self.section.content.add_para())
+        return ParaBuilder(self, self, self.section.content.add_para())
 
     def add_list(self,listtype):
         return ListBuilder(self, self.section.content.add_list(listtype))
@@ -43,15 +43,25 @@ class SectionBuilder:
         self.section.content.add_image(filetype, data)
 
     def add_link(self, href):
-        return ParaBuilder(self, self.section.content.add_para()).add_link(href)
+        return ParaBuilder(self.section, self, self.section.content.add_para()).add_link(href)
 
 class ParaBuilder:
-    def __init__(self, section, para):
+    def __init__(self, section, owner, para):
         self.section = section
+        self.owner = owner
         self.para = para
 
     def add_link(self, href):
         return LinkBuilder(self.para.add_link(href))
+
+    def add_list(self, listtype):
+        return self.owner.add_list(listtype)
+
+    def add_image(self, filetype, data):
+        self.para.add_image(filetype, data)
+
+    def storage(self):
+        return self.section.document.harstorage
 
 class ListBuilder:
     def __init__(self, section, alist):
@@ -59,7 +69,7 @@ class ListBuilder:
         self.alist = alist
 
     def add_item(self):
-        return ParaBuilder(self.section, self.alist.add_item())
+        return ParaBuilder(self.section, self, self.alist.add_item())
 
     def add_list(self, listtype):
         return ListBuilder(self.section, self.alist.add_list(listtype))
@@ -197,12 +207,19 @@ class BodyMaker:
 
     def make_para_contents(self, pnode, pbuilder):
         self.walk_nodes(pnode, {'code': self.make_code, 'strong': self.make_strong, 'em': self.make_emphasis,
+                                's': self.make_strike, 'ol': self.make_list, 'details': self.make_next_para,
+                                'summary': self.make_next_para, 'figure': self.make_para_contents, 'img': self.make_image,
                                 'br': lambda x,y: y.para.add_string('\n'), 'u':self.make_para_contents,
                                 'a': self.make_link, 'header': self.make_para_contents, 'blockquote': self.make_block_quote_inside,
                                 'mark': self.make_para_contents, 'span': self.make_para_contents, 'div': self.make_para_contents,
                                 'pre': self.make_para_contents, 'p': self.make_para_contents, 'button': self.skip, 
                                 '$default':lambda x,y:print(f'Unknown node {x.name} in para node: {str(x)[:70]}'),
                                '$string': lambda x,y: y.para.add_string(x.string) }, pbuilder )
+
+    def make_next_para(self, pnode, pbuilder):
+        nextbuilder = pbuilder.section.add_para()
+        self.make_para_contents(pnode, nextbuilder)
+        pbuilder.para = pbuilder.section.add_para().para
 
     def make_list(self, lnode, nbuilder):
         listtype = '-'
@@ -217,6 +234,11 @@ class BodyMaker:
 
     def make_list_item(self, linode, lbuilder):
         self.make_para_contents(linode, lbuilder.add_item())
+
+    def make_strike(self, pnode, pbuilder):
+        pbuilder.para.add_run(textdoc.Style.StrikeThrough)
+        self.make_para_contents(pnode, pbuilder)
+        pbuilder.para.add_run(textdoc.Style.Regular)
 
     def make_strong(self, pnode, pbuilder):
         pbuilder.para.add_run(textdoc.Style.Strong)
