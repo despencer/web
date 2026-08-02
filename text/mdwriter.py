@@ -1,8 +1,9 @@
+import os
 import textdoc
 
 class MarkdownWriter:
     def __init__(self, filename, target):
-        self.filename = filename
+        self.filename = os.path.basename(filename)
         self.target = target
         self.imagecount = 0
         self.listindent = 0
@@ -56,7 +57,7 @@ class MarkdownWriter:
             self.target.write(f'*{run.text}*')
         elif run.style == textdoc.Style.Code:
             if '\n' in run.text:
-                self.target.write(f'```{run.language}\n{run.text}\n```')
+                self.target.write(f'\n```{run.language}\n{run.text}\n```')
             else:
                 self.target.write(f'```{run.text}```')
         else:

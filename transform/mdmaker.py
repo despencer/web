@@ -59,10 +59,10 @@ class ListBuilder:
         self.alist = alist
 
     def add_item(self):
-        return ParaBuilder(self, self.alist.add_item())
+        return ParaBuilder(self.section, self.alist.add_item())
 
     def add_list(self, listtype):
-        return ListBuilder(self, self.alist.add_list(listtype))
+        return ListBuilder(self.section, self.alist.add_list(listtype))
 
 class LinkBuilder:
     def __init__(self, alink):
@@ -189,9 +189,16 @@ class BodyMaker:
         pbuilder.para.style = textdoc.Style.BlockQuote
         self.make_para_contents(pnode, pbuilder)
 
+    def make_block_quote_inside(self, pnode, pbuilder):
+        bqbuilder = pbuilder.section.add_para()
+        bqbuilder.para.style = textdoc.Style.BlockQuote
+        self.make_para_contents(pnode, bqbuilder)
+        pbuilder.para = pbuilder.section.add_para().para
+
     def make_para_contents(self, pnode, pbuilder):
         self.walk_nodes(pnode, {'code': self.make_code, 'strong': self.make_strong, 'em': self.make_emphasis,
-                                'a': self.make_link,
+                                'br': lambda x,y: y.para.add_string('\n'), 'u':self.make_para_contents,
+                                'a': self.make_link, 'header': self.make_para_contents, 'blockquote': self.make_block_quote_inside,
                                 'mark': self.make_para_contents, 'span': self.make_para_contents, 'div': self.make_para_contents,
                                 'pre': self.make_para_contents, 'p': self.make_para_contents, 'button': self.skip, 
                                 '$default':lambda x,y:print(f'Unknown node {x.name} in para node: {str(x)[:70]}'),
@@ -225,19 +232,26 @@ class BodyMaker:
         href = ''
         if 'href' in lnode.attrs:
             href = lnode['href']
+        self.make_link_contents(lnode, pbuilder.add_link(href))
+
+    def make_link_contents(self, lnode, lbuilder):
         self.walk_nodes(lnode, {'code': lambda x,y: y.para.add_string(''.join(x.strings)),
+                                'time': self.make_link_contents,
                                '$default':lambda x,y:print(f'Node {x.name} in xref node: {str(x)[:70]}'),
-                               '$string': lambda x,y: y.para.add_string(x.string) }, pbuilder.add_link(href) )
+                               '$string': lambda x,y: y.para.add_string(x.string) }, lbuilder )
 
     def make_code(self, cnode, pbuilder):
         style = pbuilder.para.get_current_style()
         pbuilder.para.add_run(textdoc.Style.Code)
-        pbuilder.para.last_run().language = self.code
+        if 'class' in cnode.attrs:
+            pbuilder.para.last_run().language = cnode['class']
+        else:
+            pbuilder.para.last_run().language = self.code
         self.make_code_contents(cnode, pbuilder)
         pbuilder.para.add_run(style)
 
     def make_code_contents(self, cnode, cbuilder):
-        self.walk_nodes(cnode, {'span': self.make_code_contents,
+        self.walk_nodes(cnode, {'span': self.make_code_contents, 'br': lambda x,y: y.para.add_string('\n'),
                                 '$default':lambda x,y:print(f'Node {x.name} in code node: {str(x)[:70]}'),
                                '$string': lambda x,y: y.para.add_string(x.string) }, cbuilder )
 
