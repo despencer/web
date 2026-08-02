@@ -207,7 +207,8 @@ class BodyMaker:
 
     def make_para_contents(self, pnode, pbuilder):
         self.walk_nodes(pnode, {'code': self.make_code, 'strong': self.make_strong, 'em': self.make_emphasis,
-                                's': self.make_strike, 'ol': self.make_list, 'details': self.make_next_para,
+                                's': self.make_strike, 'ol': self.make_list, 'ul': self.make_list,
+                                'details': self.make_next_para,
                                 'summary': self.make_next_para, 'figure': self.make_para_contents, 'img': self.make_image,
                                 'br': lambda x,y: y.para.add_string('\n'), 'u':self.make_para_contents,
                                 'a': self.make_link, 'header': self.make_para_contents, 'blockquote': self.make_block_quote_inside,
@@ -340,7 +341,7 @@ class BodyMaker:
 
     def check_hanging(self, snode, target):
         if snode.string.strip() != '':
-            print(f'Hanging text {snode.string.strip()}')
+            print(f'Hanging text {snode.string.strip()} in node {str(snode.parent)[:90]}')
 
     def load(self, ybody):
         self.start.load(ybody['start'])
