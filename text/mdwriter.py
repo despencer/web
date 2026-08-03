@@ -3,6 +3,7 @@ import textdoc
 
 class MarkdownWriter:
     def __init__(self, filename, target):
+        self.basedir = os.path.dirname(filename)
         self.filename = os.path.basename(filename)
         self.target = target
         self.imagecount = 0
@@ -110,6 +111,6 @@ class MarkdownWriter:
     def write_image(self, image):
         self.imagecount += 1
         imageref = f'{self.filename}-{self.imagecount}.{image.format}'
-        with open(imageref, 'wb') as f:
+        with open(self.basedir + '/' + imageref, 'wb') as f:
             f.write(image.data)
         self.target.write(f'![]({imageref})\n\n')
