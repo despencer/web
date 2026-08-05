@@ -51,6 +51,9 @@ class ParaBuilder:
         self.owner = owner
         self.para = para
 
+    def add_string(self, astr):
+        self.para.add_string( astr.replace('\n',' ') )
+
     def add_link(self, href):
         return LinkBuilder(self.para.add_link(href))
 
@@ -59,6 +62,9 @@ class ParaBuilder:
 
     def add_image(self, filetype, data):
         self.para.add_image(filetype, data)
+
+    def add_para(self):
+        return ParaBuilder(self.section, self, self.para.add_content().add_para())
 
     def storage(self):
         return self.section.document.harstorage
@@ -77,6 +83,9 @@ class ListBuilder:
 class LinkBuilder:
     def __init__(self, alink):
         self.para = alink
+
+    def add_string(self, astr):
+        self.para.add_string( astr.replace('\n',' ') )
 
 class TableBuilder:
     def __init__(self, section, atable):
@@ -200,27 +209,25 @@ class BodyMaker:
         self.make_para_contents(pnode, pbuilder)
 
     def make_block_quote_inside(self, pnode, pbuilder):
-        bqbuilder = pbuilder.section.add_para()
+        bqbuilder = pbuilder.add_para()
         bqbuilder.para.style = textdoc.Style.BlockQuote
         self.make_para_contents(pnode, bqbuilder)
-        pbuilder.para = pbuilder.section.add_para().para
 
     def make_para_contents(self, pnode, pbuilder):
         self.walk_nodes(pnode, {'code': self.make_code, 'strong': self.make_strong, 'em': self.make_emphasis,
                                 's': self.make_strike, 'ol': self.make_list, 'ul': self.make_list,
                                 'details': self.make_next_para,
                                 'summary': self.make_next_para, 'figure': self.make_para_contents, 'img': self.make_image,
-                                'br': lambda x,y: y.para.add_string('\n'), 'u':self.make_para_contents,
+                                'br': lambda x,y: y.para.add_string(' '), 'u':self.make_para_contents,
                                 'a': self.make_link, 'header': self.make_para_contents, 'blockquote': self.make_block_quote_inside,
                                 'mark': self.make_para_contents, 'span': self.make_para_contents, 'div': self.make_para_contents,
                                 'pre': self.make_para_contents, 'p': self.make_para_contents, 'button': self.skip, 
                                 '$default':lambda x,y:print(f'Unknown node {x.name} in para node: {str(x)[:70]}'),
-                               '$string': lambda x,y: y.para.add_string(x.string) }, pbuilder )
+                               '$string': lambda x,y: y.add_string(x.string) }, pbuilder )
 
     def make_next_para(self, pnode, pbuilder):
-        nextbuilder = pbuilder.section.add_para()
+        nextbuilder = pbuilder.add_para()
         self.make_para_contents(pnode, nextbuilder)
-        pbuilder.para = pbuilder.section.add_para().para
 
     def make_list(self, lnode, nbuilder):
         listtype = '-'
@@ -258,10 +265,10 @@ class BodyMaker:
         self.make_link_contents(lnode, pbuilder.add_link(href))
 
     def make_link_contents(self, lnode, lbuilder):
-        self.walk_nodes(lnode, {'code': lambda x,y: y.para.add_string(''.join(x.strings)),
+        self.walk_nodes(lnode, {'code': lambda x,y: y.add_string(''.join(x.strings)),
                                 'time': self.make_link_contents,
                                '$default':lambda x,y:print(f'Node {x.name} in xref node: {str(x)[:70]}'),
-                               '$string': lambda x,y: y.para.add_string(x.string) }, lbuilder )
+                               '$string': lambda x,y: y.add_string(x.string) }, lbuilder )
 
     def make_code(self, cnode, pbuilder):
         style = pbuilder.para.get_current_style()
@@ -274,9 +281,9 @@ class BodyMaker:
         pbuilder.para.add_run(style)
 
     def make_code_contents(self, cnode, cbuilder):
-        self.walk_nodes(cnode, {'span': self.make_code_contents, 'br': lambda x,y: y.para.add_string('\n'),
+        self.walk_nodes(cnode, {'span': self.make_code_contents, 'br': lambda x,y: y.para.add_string(' '),
                                 '$default':lambda x,y:print(f'Node {x.name} in code node: {str(x)[:70]}'),
-                               '$string': lambda x,y: y.para.add_string(x.string) }, cbuilder )
+                               '$string': lambda x,y: y.add_string(x.string) }, cbuilder )
 
     def make_section(self, snode, target):
         self.make_node(snode, target.add_section())

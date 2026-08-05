@@ -17,7 +17,9 @@ class MarkdownWriter:
     def write_section(self, section):
         if section.header != None and section.level > 0:
             self.target.write(f"{'#'*section.level} {section.header}\n\n")
-        content = section.content
+        self.write_content(section.content)
+
+    def write_content(self, content):
         for item in content.items:
             if isinstance(item, textdoc.Para):
                 self.write_para(item)
@@ -28,7 +30,9 @@ class MarkdownWriter:
             if isinstance(item, textdoc.Image):
                 self.write_image(item)
 
-    def write_para(self, para):
+    def write_para(self, para, prefix=True):
+        if prefix:
+            self.target.write(' '*self.listindent)
         if para.style == textdoc.Style.BlockQuote:
             self.target.write('>')
         self.write_runs(para.runs)
@@ -45,13 +49,21 @@ class MarkdownWriter:
         return True
 
     def write_runs(self, runs):
+        prefix = False
         for run in runs:
             if isinstance(run, textdoc.Run):
+                if prefix:
+                    self.target.write(' '*self.listindent)
+                    prefix = False
                 self.write_run(run)
             if isinstance(run, textdoc.Link):
                 self.write_link(run)
             if isinstance(run, textdoc.Image):
                 self.write_image(run)
+            if isinstance(run, textdoc.Content):
+                self.target.write('\n\n')
+                self.write_content(run)
+                prefix = True
 
     def write_run(self, run):
         if run.style == textdoc.Style.Strong:
@@ -89,7 +101,9 @@ class MarkdownWriter:
                     prefix = itemno + ' '
                 prefix = (' '*self.listindent) + prefix
                 self.target.write(prefix)
-                self.write_para(item)
+                self.listindent += 4
+                self.write_para(item, prefix=False)
+                self.listindent -= 4
 
     def write_table(self, table):
         self.write_table_row(table.header)
@@ -113,4 +127,4 @@ class MarkdownWriter:
         imageref = f'{self.filename}-{self.imagecount}.{image.format}'
         with open(self.basedir + '/' + imageref, 'wb') as f:
             f.write(image.data)
-        self.target.write(f'![]({imageref})\n\n')
+        self.target.write(f'![]({imageref})')

@@ -71,6 +71,10 @@ class Para:
         image = Image(format, data)
         return self.add_item(image)
 
+    def add_content(self):
+        content = Content()
+        return self.add_item(content)
+
     def add_item(self, item):
         nextrun = Run()
         nextrun.style = self.runs[-1].style
